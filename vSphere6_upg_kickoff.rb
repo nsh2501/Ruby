@@ -117,7 +117,7 @@ opts[:vrealms].each { |vrealm|
 
   if opts[:action].downcase =~ /\w+_hosts/
     opts[:ipmi_password] = get_password('ipmi-dXpXsXchXsrvX', 'ADMIN')
-    opts[:target_vcenter_root_password] = ssh_conn(vc, 'root')
+    opts[:vcenter_root_password] = ssh_conn(vc, 'root')
   else
     opts[:target_vcenter_root_password] = ssh_conn(vc, 'root')
     opts[:target_vcenter_sso_password] = ssh_conn(vc, 'administrator@vsphere.local')
