@@ -1,0 +1,290 @@
+#!/usr/bin/env ruby
+require 'highline/import'
+require 'nokogiri'
+require 'rest-client'
+require 'trollop'
+require 'colorize'
+require 'syslog/logger'
+
+#personal functions
+require_relative "/home/nholloway/scripts/Ruby/functions/get_password.rb"
+
+#PID
+pid = Process.pid
+
+opts = Trollop::options do
+  #required parameters
+  opt :vrealm, "vRealm to check for the FID. Ex: dXpYvZ", :type => :string, :required => true
+  opt :fid_number, "FID number you would like to check for", :type => :strings, :required => true
+
+  #optional paremeters
+  opt :vrealm_priv, "If FID is found on the vRealm Edge"
+  opt :oss_priv, "If FID is found on the OSS Priv Edge"
+end
+
+#check parameters
+Trollop::die :vrealm, "vRealm must be in dXpYvZ formate" unless /^d\d+p\d+(v\d+|oss|tlm)$/.match(opts[:vrealm])
+
+#methods
+def clear_line ()
+  print "\r"
+  print "                                                                                                                   "
+  print "\r"
+
+end
+
+#configure logging
+script_name = 'check_fids'
+logger = Syslog::Logger.new script_name
+logger.level = Kernel.const_get 'Logger::INFO'
+logger.info "INFO - Logging initalized."
+puts "[ " + "INFO".green + " ] Logging started search #{script_name}[#{pid}] in /var/log/messages for logs."
+
+
+#variables
+vrealm_numbers = opts[:vrealm].scan(/\d+/)
+dc = vrealm_numbers[0]
+pod = vrealm_numbers[1]
+if opts[:vrealm] =~ /\w+(oss|tlm)/
+  vpc = opts[:vrealm].split(//).last(3).join("").to_s
+else
+  vpc = vrealm_numbers[2]
+end
+edgesList = Hash.new
+fidArray = Hash.new {|h,k| h[k] = []}
+fidcount = 0
+
+#check if each edge is present 
+if (opts[:vrealm_priv] == true) && (opts[:vrealm] =~ /^d\d+p\d+v\d+$/)
+  vse = opts[:vrealm] + "mgmt-vse-priv"
+  nsx = "d" + dc + "p" + pod + "tlm-mgmt-vsm0"
+  print '[ ' + 'INFO'.green + " ] Adding #{vse} to edge list"
+  logger.info "INFO - Adding #{vse} to edge list"
+  edgesList[vse] = nsx
+end
+
+if opts[:oss_priv] == true
+  vse = "vse-priv"
+  nsx = "d" + dc + "p" + pod + "oss-mgmt-vsm0"
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Adding #{vse} to edge list"
+  logger.info "INFO - Adding #{vse} to edge list"
+  edgesList[vse] = nsx
+end
+
+#collect info on the following:
+edgesList.each do |edgeName,nsxName|
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Logging into #{nsxName} to look for edge #{edgeName}"
+  logger.info "INFO - Logging into #{nsxName} to look for edge #{edgeName}"
+  adminPass = get_password(nsxName, 'admin')
+  nsxAccess = 'false'
+  access = 'false'
+  while access == 'false'
+    begin
+      edgeApi = RestClient::Request.execute(:url => "https://admin:#{adminPass}@#{nsxName}/api/4.0/edges/", :method => :get, :verify_ssl => false)
+      access = 'true'
+      clear_line
+      print '[ ' + 'INFO'.green + " ] Successfully logged into #{nsxName}"
+      logger.info "INFO - Successfully logged into #{nsxName}"
+    rescue => e
+      if e.response =~ /Status 403/
+        adminPass = ask("Please enter the Admin password for #{nsxName}") { |q| q.echo="*"}
+      else 
+        puts "\n" + '[ ' + 'WARN'.yellow + " ] Call failed for unknown reason"
+        e
+        access = 'failed'
+      end
+    end
+    break
+  end
+
+  if access == 'true'
+    edgeXml = Nokogiri::XML(edgeApi)
+    edges = edgeXml.xpath("//edgeSummary")
+
+    #Get all ipsets from globalroot-0
+    ipsetApi = RestClient::Request.execute(:url => "https://admin:#{adminPass}@#{nsxName}/api/2.0/services/ipset/scope/globalroot-0", :method => :get, :verify_ssl => false)
+    ipsetXml = Nokogiri::XML(ipsetApi)
+    ipsets = ipsetXml.xpath("//ipset")
+
+    #cleanup
+    ipsetApi = nil
+    ipsetXml = nil
+    edgeApi = nil
+    edgeXml = nil
+
+    #find edge by name from list of edges
+    edgeSummary = edges.find do |edge|
+      edgeNames = edge.xpath("name").text
+      edgeNames =~ /#{edgeName}/
+    end
+
+    if edgeSummary.nil?
+      puts '[ ' + 'ERROR'.red + " ] Failed to find edge"
+      logger.info "ERROR - Failed to find edge"
+      exit 
+    else
+      edges = nil
+    end
+
+    #get edgeId
+    edgeId = edgeSummary.xpath("objectId").text
+    edgeXmlName = edgeSummary.xpath("name").text
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Found edge. Edge ID: #{edgeId}"
+    logger.info "INFO - Found edge. Edge ID: #{edgeId}"
+
+    #get firewall config
+    firewallApi = RestClient::Request.execute(:url => "https://admin:#{adminPass}@#{nsxName}/api/4.0/edges/#{edgeId}/firewall/config", :method => :get, :verify_ssl => false)
+    firewallXml = Nokogiri::XML(firewallApi)
+    firewallRules = firewallXml.xpath("//firewallRule")
+
+    #cleanup
+    firewallApi = nil
+    firewallXml = nil
+
+    opts[:fid_number].each do |fid_number|
+      #find all rules with Fid-Name
+      fidRules = firewallRules.select do |rule|
+        ruleName = rule.xpath("name").text
+        ruleName =~ /#{fid_number}/
+      end
+
+      if fidRules.empty? 
+        puts "\n" '[ ' + 'WARN'.yellow + " ] FID: #{fid_number} Not found on edge #{edgeXmlName}"
+        logger.info "WARN - FID: #{fid_number} Not found on edge #{edgeName}"
+      end
+
+      #create array of FIDs
+      fidRules.each do |fidRule|
+        fid = Hash.new {|h,k| h[k] = []}
+        fid['edge'] = edgeXmlName
+        fid['name'] = fidRule.xpath("name").text
+        fid['enabled'] = fidRule.xpath("enabled").text
+        fid['action'] = fidRule.xpath("action").text
+
+        #log fid info
+        clear_line
+        print '[ ' + 'INFO'.green + " ] Found FID #{fid['name']}"
+        logger.info "INFO - Found FID #{fid['name']}"
+        
+        #get sources/destinations/applications
+        sources = fidRule.xpath("source/groupingObjectId")
+        destinations = fidRule.xpath("destination/groupingObjectId")
+        applications = fidRule.xpath("application/applicationId")
+
+        #look up ipsets and application id's and assign to fid
+        #get sources and assing to fidSource
+        fidSource = Hash.new {|h,k| h[k] = []}
+        sourcecount = 0
+        sources.each do |source|
+          ipsetId = source.text
+          ipsetXml = ipsets.find do |ipset|
+            objectId = ipset.xpath("objectId").text
+            objectId == ipsetId
+          end
+          sourceArray = Hash.new
+          sourceArray['name'] = ipsetXml.xpath("name").text
+          sourceArray['ips'] = ipsetXml.xpath("value").text
+          fidSource[sourcecount] = sourceArray
+          sourcecount += 1
+
+          #log sources
+          clear_line
+          print '[ ' + 'INFO'.green + " ] Found Source for FID: #{sourceArray['name']}"
+          logger.info "INFO - Found Source for FID: #{sourceArray['name']}/#{sourceArray['ips']}"
+        end
+        fid['source'] = fidSource
+        
+        #get destinations and assing to fidDestination
+        fidDestinataion = Hash.new {|h,k| h[k] = []}
+        destcount = 0
+        destinations.each do |destination|
+          ipsetId = destination.text
+          ipsetXml = ipsets.find do |ipset|
+            objectId = ipset.xpath("objectId").text
+            objectId == ipsetId
+          end
+          destArray = Hash.new
+          destArray['name'] = ipsetXml.xpath("name").text
+          destArray['ips'] = ipsetXml.xpath("value").text
+          fidDestinataion[destcount] = destArray
+          destcount += 1
+
+          #log destinations
+          clear_line
+          print '[ ' + 'INFO'.green + " ] Found Destination for FID: #{destArray['name']}"
+          logger.info "INFO - Found Destination for FID: #{destArray['name']}/#{destArray['ips']}"
+        end
+        fid['destination'] = fidDestinataion
+
+        #get applications
+        fidApplication = Hash.new {|h,k| h[k] = []}
+        applicationcount = 0
+        applications.each do |application|
+          appId = application.text
+
+          appApi = RestClient::Request.execute(:url => "https://admin:#{adminPass}@#{nsxName}/api/2.0/services/application/#{appId}", :method => :get, :verify_ssl => false)
+          appXml = Nokogiri::XML(appApi)
+          
+          appArray = Hash.new
+          appArray['name'] = appXml.xpath("application/name").text
+          appArray['protocol'] = appXml.xpath("application/element/applicationProtocol").text
+          appArray['port'] = appXml.xpath("application/element/value").text
+          fidApplication[applicationcount] = appArray
+          applicationcount += 1
+
+          #log destinations
+          clear_line
+          print '[ ' + 'INFO'.green + " ] Found Application for FID: #{appArray['name']} #{appArray['protocol']} #{appArray['port']}"
+          logger.info "INFO - Found Application for FID: #{appArray['name']} #{appArray['protocol']} #{appArray['port']}"
+        end
+        fid['application'] = fidApplication
+
+
+        #add fid to fidArray
+        fidArray[fidcount] = fid
+        fidcount += 1
+      end
+    end
+  end
+end
+
+clear_line
+print '[ ' + 'INFO'.green + " ] No more edges in list"
+
+#Print out fid
+puts "\n\n"
+fidArrayCount = fidArray.count - 1
+fidcount = 0 
+fidArray.each do
+  fid = fidArray[fidcount]
+  puts "Edge Name: " + fid['edge']
+  puts "Fid Name: " + fid['name']
+  puts "Enabled: " + fid['enabled']
+  puts "Action: " + fid['action']
+  sourcecount = 0
+  puts "Source:"
+  fid['source'].each do
+    source = fid['source'][sourcecount]
+    puts "  - " + source['name'] + ": " + source['ips']
+    sourcecount += 1
+  end
+  destcount = 0
+  puts "Destination: "
+  fid['destination'].each do
+    dest = fid['destination'][destcount]
+    puts "  - " + dest['name'] + ": " + dest['ips']
+    destcount += 1
+  end
+  appcount = 0
+  puts "Apllication Name - Protocol - Port"
+  fid['application'].each do
+    app = fid['application'][appcount]
+    puts "  - " + app['name'] + " "+ app['protocol'] + " " + app['port']
+    appcount += 1
+  end
+  fidcount += 1
+  puts "\n"
+end
