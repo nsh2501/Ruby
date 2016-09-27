@@ -153,7 +153,7 @@ edgesList.each do |edgeName,nsxName|
 
       if fidRules.empty? 
         puts "\n" '[ ' + 'WARN'.yellow + " ] FID: #{fid_number} Not found on edge #{edgeXmlName}"
-        logger.info "WARN - FID: #{fid_number} Not found on edge #{edgeXmlName}"
+        logger.info "WARN - FID: #{fid_number} Not found on edge #{edgeName}"
       end
 
       #create array of FIDs

@@ -49,9 +49,10 @@ def list_vms(folder)
     if child.class == RbVmomi::VIM::VirtualMachine
       if child.runtime.powerState == 'poweredOn' && child.config.name =~ /vc0/ && child.config.name !~ /tlm-mgmt-vc0/
         @vms.push child.name
-          clear_line
+        print '                                                                                                                                                                      '
+          print "\r"
           print "[ " + "INFO".green + " ] #{child.name} added to inventory"
-          
+          print "\r"
       end
     elsif child.class == RbVmomi::VIM::Folder
       list_vms(child)
@@ -67,7 +68,6 @@ def verifyAD_Pass(vm, user, pass)
     begin
       session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
       access = 'true'
-      clear_line
       print '[ ' + 'INFO'.green + " ] AD Authentication successful"
       session.close
     rescue Net::SSH::AuthenticationFailed 
@@ -107,11 +107,8 @@ adPass = ask("Enter the AD password for the user #{vc_user}: ") { |q| q.echo="*"
 localVM = `hostname`.chomp
 adPass = verifyAD_Pass(localVM, vc_user, adPass)
 prestoUser = vc_user.split('@')[0]
-prestoVM = 'd0p1oss-presto-b'
-prestoRootPass = get_password(prestoVM, 'root')
 @vms = []
 vrealms = []
-podArray = []
 
 clear_line
 puts '[ ' + 'INFO'.green + " ] Getting list of all vRealms for each pod"
@@ -122,7 +119,6 @@ unless opts[:pods].nil?
     vc = "10.#{podSubnet}.3.2"
     clear_line
     print '[ ' + 'INFO'.green + " ] Logging into #{vc}"
-    
     #connect to vCenter
     vim = RbVmomi::VIM.connect :host => vc, :user => vc_user, :password => adPass, :insecure => true
 
@@ -147,7 +143,6 @@ unless opts[:pods].nil?
     #build URL to query presto
     clear_line
     print '[ ' + 'INFO'.green + " ] Querying presto for #{vrealm}"
-    
     url = "https://10.2.28.97:443/api/v2/version_data?datacenter_instance_id=#{dc_num}&pod_instance_id=#{pod_num}&vrealm_instance_id=#{vpc_num}"
     session = rest_session(url, prestoUser, adPass)
     e = nil
@@ -179,7 +174,6 @@ unless opts[:vrealms].nil?
     #build URL to query presto
     clear_line
     print '[ ' + 'INFO'.green + " ] Querying presto for #{vrealm}"
-    
     url = "https://10.2.28.97:443/api/v2/version_data?datacenter_instance_id=#{dc_num}&pod_instance_id=#{pod_num}&vrealm_instance_id=#{vpc_num}"
     session = rest_session(url, prestoUser, adPass)
     e = nil
@@ -203,42 +197,5 @@ unless opts[:vrealms].nil?
   end #opts[:vrealms].each do |vpc|
 end #unless opts[:vrealms].nil?
 
-#connecting to presto-b to run update commands
 clear_line
-puts '[ ' + 'INFO'.green + " ] Logging into the presto-b server"
-sshSession = Net::SSH.start(prestoVM, "root", :password => prestoRootPass, :auth_methods => ['password'])
-unless sshSession.nil?
-  vrealms.each do |vrealm|
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Creating vc_vsupg for vRealm: #{vrealm}"
-    
-    #Get vpc identifiers
-    numbers = vrealm.scan(/\d+/)
-    dc_num = numbers[0]
-    pod_num = numbers[1]
-    vpc_num = numbers[2]
-
-    #get update command
-    cmd = nil
-    cmd = "sudo -i -u presto bash -c 'export RAILS_ENV=production;rake vcenter:create_vc_vsupg[#{pod_num},\"vRealm\",#{vpc_num},\"medium\"]'"
-    sshSession.exec!(cmd)
-  end #vrealms.each do |vrealm|
-  vrealms.each do |vrealm|
-    podArray.push vrealm.split('v')[0]
-  end #vrealms.each do |vrealm|
-  podArray.uniq!
-  podArray.each do |pod|
-    numbers = pod.scan(/\d+/)
-    dc_num = numbers[0]
-    pod_num = numbers[1]
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Updating pod #{pod_num} in presto"
-    
-    cmd = nil
-    cmd = "sudo -i -u presto bash -c 'export RAILS_ENV=production;rake vcenter:update_vc_vsupg_information[#{dc_num},#{pod_num}]'"
-    sshSession.exec!(cmd)
-  end #podArray.each do |pod|
-  sshSession.close
-  clear_line
-  puts '[ ' + 'INFO'.green + " ] Completed"
-end #unless sshSession.nil?
+pp vrealms

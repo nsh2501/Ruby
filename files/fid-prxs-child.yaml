@@ -1,0 +1,22 @@
+fids:
+  FID-00677: 
+    desc: VC to sso 443 
+    edges: vrealm_priv parent_priv
+  FID-00678: 
+    desc: VC to sso 389 
+    edges: vrealm_priv parent_priv
+  FID-00679: 
+    desc: VC to sso 636 
+    edges: vrealm_priv parent_priv
+  FID-00680: 
+    desc: VC to sso 2012 
+    edges: vrealm_priv parent_priv
+  FID-00681: 
+    desc: VC to sso 2014
+    edges: vrealm_priv parent_priv
+  FID-00682: 
+    desc: VC to sso 2020
+    edges: vrealm_priv parent_priv
+  FID-00683: 
+    desc: VC to sso 2020(UDP)
+    edges: vrealm_priv parent_priv

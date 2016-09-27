@@ -22,7 +22,9 @@ opts = Trollop::options do
   opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false
   opt :zor_log_level, "Log level for the zor command", :type => :string, :required => false, :default => 'debug'
   opt :engine_api, "Zombie engine api location, i.e d0p1tlm-zmb-eng-fe-a:8080", :type => :string, :default => 'http://d0p1tlm-zmb-eng-fe-a:8080'
-  opt :zedVersion, "Action Set Version", :type => :string, :default => 'ZA47.3'
+  opt :zedVersion, "Action Set Version", :type => :string, :default => '1.3.11'
+  opt :certificate_warning_days, "How many days to check for expired SSL Certs", :type => :string
+  opt :group_count, "How many hosts to perform at once", :type => :string, :required => false
 end
 
 #validate input
@@ -64,7 +66,7 @@ def ssh_conn(vm, user)
         count += 1
       else
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password #{pass}."
-        password = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
+        pass = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
         count += 1
       end
     end
@@ -83,7 +85,7 @@ def ssh_conn2(vm, user, pass)
       session.close
     rescue Net::SSH::AuthenticationFailed 
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password."
-        password = ask("Please enter your Ad Password") { |q| q.echo="*"}
+        pass = ask("Please enter your Ad Password") { |q| q.echo="*"}
     end
   end
   return pass

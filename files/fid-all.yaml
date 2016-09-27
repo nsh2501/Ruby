@@ -1,0 +1,41 @@
+---
+fids:
+  FID-00438:
+    desc: pod broker to vCD
+    edges: vrealm_priv oss_priv
+  FID-00441: 
+    desc: pod proker to vCD
+    edges: vrealm_priv oss_priv
+  FID-00518: 
+    desc: pod proker to vCenter 22
+    edges: vrealm_priv oss_priv
+  FID-00081: 
+    desc: pod proker to vCenter 443
+    edges: vrealm_priv oss_priv
+  FID-00082: 
+    desc: pod proker to vCenter 7444
+    edges: vrealm_priv oss_priv
+  FID-00211: 
+    desc: pod broker to NSX 443
+    edges: vrealm_priv oss_priv
+  FID-00237: 
+    desc: pod broker to Hyperic 
+    edges: oss_priv
+  FID-00690: 
+    desc: vc-vsupg to MGMT ESXi
+    edges: vrealm_priv oss_priv
+  FID-00690: 
+    desc: vc-vsupg to tlm VC
+    edges: vrealm_priv oss_priv
+  FID-00081: 
+    desc: pod broker to VC 443
+    edges: vrealm_priv - oss_priv
+  FID-00081-001: 
+    desc: pod broker to tlmVC, ossVC, all esx Hoss 443 
+    edges: vrealm_priv oss_priv
+  FID-00671: 
+    desc: pod broker to everything 22
+    edges: vrealm_priv oss_priv
+  FID-00671-001:
+    desc: pod broker to everything 22
+    edges: vrealm_priv oss_priv

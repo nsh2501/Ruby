@@ -141,7 +141,8 @@ vrealms.each do |vrealm|
   clear_line
   print '[ ' + 'INFO'.green + " ] Attempting to connect to #{nsxName}"
   logger.info "INFO - Attempting to connect to #{nsxName}"
-  while nsxAccess == 'false'
+  loopBreak = 'false'
+  while (nsxAccess == 'false' && loopBreak == 'false')
     begin
       userApi = userSession.get
       clear_line
@@ -170,50 +171,53 @@ vrealms.each do |vrealm|
         clear_line
         puts '[ ' + 'WARN'.yellow + " ] Unkown error on #{nsxName}:"
         pp e
+        loopBreak = 'true'
       end
     end
   end
 
-  unless userApi.nil? || userApi.nil?
-    #build role session
-    roleUrl = baseUrl.clone
-    roleUrl.concat "/role/#{nsxUser}"
-    roleSession = rest_session(roleUrl, 'admin', adminPass)
+  if loopBreak == 'false'
+    unless userApi.nil? || userApi.nil?
+      #build role session
+      roleUrl = baseUrl.clone
+      roleUrl.concat "/role/#{nsxUser}"
+      roleSession = rest_session(roleUrl, 'admin', adminPass)
 
-    #Get Role
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Getting NSX Role for user #{nsxUser} on #{nsxName}"
-    logger.info "INFO - Getting NSX Role for user #{nsxUser}"
-    roleApi = roleSession.get
-    roleXml = Nokogiri::XML(roleApi)
-    role = roleXml.xpath("//role").text
-    updateRole = opts[:role]
+      #Get Role
+      clear_line
+      print '[ ' + 'INFO'.green + " ] Getting NSX Role for user #{nsxUser} on #{nsxName}"
+      logger.info "INFO - Getting NSX Role for user #{nsxUser}"
+      roleApi = roleSession.get
+      roleXml = Nokogiri::XML(roleApi)
+      role = roleXml.xpath("//role").text
+      updateRole = opts[:role]
 
-    #if role is not equal to enerprise_admin update it
-    if role == updateRole
-      clear_line
-      print '[ ' + 'INFO'.green + " ] Role is already set to #{updateRole} on #{nsxName}"
-      logger.info "INFO - Role is already set to #{updateRole}"
-      updateRole = 'false'
-    else
-      clear_line
-      print '[ ' + 'INFO'.green + " ] Role is set to #{role}. Updating to #{updateRole}"
-      roleXml.at("//role").content = updateRole
-      updateRole = 'true'
-    end
+      #if role is not equal to enerprise_admin update it
+      if role == updateRole
+        clear_line
+        print '[ ' + 'INFO'.green + " ] Role is already set to #{updateRole} on #{nsxName}"
+        logger.info "INFO - Role is already set to #{updateRole}"
+        updateRole = 'false'
+      else
+        clear_line
+        print '[ ' + 'INFO'.green + " ] Role is set to #{role}. Updating to #{updateRole}"
+        roleXml.at("//role").content = updateRole
+        updateRole = 'true'
+      end
 
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Updating Role for user #{nsxUser}"
-    logger.info "INFO - Updating Role for user #{nsxUser}"
-    begin
-      roleSession.put(roleXml.to_xml)
       clear_line
-      print '[ ' + 'INFO'.green + " ] Role updated successfully"
-      logger.info "INFO - Role updated successfully"
-    rescue => e
-      puts '[ ' + 'ERROR'.red + " ] Unknown error on #{nsxName}. Please see error response below. Going to next vRealm"
-      logger.info "ERROR - Unknown error on #{nsxName}. Please see error response below. #{e}"
-      require 'pp';pp e
+      print '[ ' + 'INFO'.green + " ] Updating Role for user #{nsxUser}"
+      logger.info "INFO - Updating Role for user #{nsxUser}"
+      begin
+        roleSession.put(roleXml.to_xml)
+        clear_line
+        print '[ ' + 'INFO'.green + " ] Role updated successfully"
+        logger.info "INFO - Role updated successfully"
+      rescue => e
+        puts '[ ' + 'ERROR'.red + " ] Unknown error on #{nsxName}. Please see error response below. Going to next vRealm"
+        logger.info "ERROR - Unknown error on #{nsxName}. Please see error response below. #{e}"
+        require 'pp';pp e
+      end
     end
   end
 end
