@@ -5,6 +5,11 @@ require 'vcd_functions'
 require 'trollop'
 require 'nokogiri'
 require 'rbvmomi'
+require 'syslog/logger'
+require 'net/ssh'
+
+#procss ID
+pid = Process.pid
 
 #command line options
 opts = Trollop::options do
