@@ -10,7 +10,7 @@ require 'rbvmomi'
 opts = Trollop::options do
   opt :vrealms, "vRealms to modify the email in vCD. Example: dXpYvZ dXpYvZ", :type => :strings, :required => false
   opt :pods, "List of pods to modify the emails in vCD. Example: 1 10 6", :type => :ints, :required => false
-  opt :user, "User to use when logging into the vCloud Director. Defaults to linjump user. Example: nholloway", :type => :string, :required => false
+  opt :user, "User to use when logging into the vCloud Director. Defaults to linjump user. Example: nholloway", :type => :string, :required => true
 end
 
 def clear_line ()
@@ -69,6 +69,7 @@ adPassAsk = ask("Please enter you AD Password") { |q| q.echo="*"}
 #verify AD password
 adPass = verifyAD_Pass(`hostname`.chomp, opts[:user], adPassAsk)
 
+=begin
 #create session
 session = Vcd_functions::Session.new('d2p3v8', opts[:user])
 
@@ -81,3 +82,4 @@ email_set = session.get('/admin/extension/settings/email');
 emailXML = Nokogiri::XML(email_set);
 
 emailXML.at("//vmext:AlertEmailTo").content = ''
+=end
