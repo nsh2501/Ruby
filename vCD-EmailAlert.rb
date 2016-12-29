@@ -92,6 +92,7 @@ def remove_email(vpc, user, password)
     puts '[ ' + 'ERROR'.red + " ] Could not log into #{vpc}"
     @logger.info "ERROR - Could not log into #{vpc}"
   else
+    clear_line
     print '[ ' + 'INFO'.green + " ] Logged into #{vpc} vCD sucessfully"
     @logger.info "INFO - Logged into #{vpc} vCD sucessfully"
     email_set = session.get('/admin/extension/settings/email');
