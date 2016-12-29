@@ -36,7 +36,7 @@ def list_vms(folder)
         @vms.push child.name
           clear_line
           print "[ " + "INFO".green + " ] #{child.name} added to inventory"
-          logger.info "INFO - #{child.name} added to inventory"
+          @logger.info "INFO - #{child.name} added to inventory"
       end
     elsif child.class == RbVmomi::VIM::Folder
       list_vms(child)
@@ -54,12 +54,12 @@ def verifyAD_Pass(vm, user, pass)
       access = 'true'
       clear_line
       print '[ ' + 'INFO'.green + " ] AD Authentication successful"
-      logger.info "INFO - AD Authentication successful"
+      @logger.info "INFO - AD Authentication successful"
       session.close
     rescue Net::SSH::AuthenticationFailed
         clear_line
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password provided."
-        logger.info "WARN - Failed to authenticate to #{vm} with password provided."
+        @logger.info "WARN - Failed to authenticate to #{vm} with password provided."
         pass = ask("Please enter your Ad Password") { |q| q.echo="*"}
     end
   end
@@ -90,10 +90,10 @@ def remove_email(vpc, user, password)
   if response.code != 200
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Could not log into #{vpc}"
-    logger.info "ERROR - Could not log into #{vpc}"
+    @logger.info "ERROR - Could not log into #{vpc}"
   else
     print '[ ' + 'INFO'.green + " ] Logged into #{vpc} vCD sucessfully"
-    logger.info "INFO - Logged into #{vpc} vCD sucessfully"
+    @logger.info "INFO - Logged into #{vpc} vCD sucessfully"
     email_set = session.get('/admin/extension/settings/email');
     emailXML = Nokogiri::XML(email_set);
     emailXML.at("//vmext:AlertEmailTo").content = ''
