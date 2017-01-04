@@ -101,7 +101,7 @@ def remove_email(vpc, user, password)
     response = session.put('/admin/extension/settings/email', emailXML.to_xml, 'application/vnd.vmware.admin.emailSettings+xml')
     if response.code == 200
       clear_line
-      puts '[ ' + 'INFO'.green + " ] Removed email alerting from #{vpc}"
+      print '[ ' + 'INFO'.green + " ] Removed email alerting from #{vpc}"
       @logger.info "INFO - Removed email alerting from #{vpc}"
     else
       clear_line
@@ -191,6 +191,15 @@ vrealm_list.uniq!
 
 unless vrealm_list.nil?
   vrealm_list.each do |vpc|
-    remove_email(vpc, opts[:user], adPass)
+    begin
+      remove_email(vpc, opts[:user], adPass)
+    rescue
+      clear_line
+      puts '[ ' + 'ERROR'.red + " ] Failed to remove email from #{vpc}"
+      @logger.info "ERROR - Failed to remove email from #{vpc}"
+    end #end of begin
   end #vrealm_list.each do |vpc|
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Removed email Alert from all vRealms"
+  @logger.info "INFO - Removed email Alert from all vRealms"
 end #unless vrealm_list.nil?
