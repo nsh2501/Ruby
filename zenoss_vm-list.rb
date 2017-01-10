@@ -8,6 +8,7 @@ require 'socket'
 require 'timeout'
 require 'colorize'
 require 'highline/import'
+require 'json'
 
 #require 'pry';binding.pry
 
@@ -17,6 +18,8 @@ pid = Process.pid
 opts = Trollop::options do 
   opt :pods, "List of Pods to gather VM list from. Example: 1 2 3", :type => :ints, :required => false
   opt :all_pods, "Use this option if you want to gather VMs from all pods. Example: --all-pods", :required => false
+  opt :automated, "Use this option to pull the password used for Secret Server. Example: --automated", :require => false
+  opt :vmregex, "The regex to use when searching for VMs. Example: --vmregex (-vcd-[a-z]$)", :type => :string, :required => false, :default => '(-vcd-[a-z]$)|(-vcd-nfs$)'
 end
 
 def clear_line ()
@@ -29,7 +32,7 @@ def list_vms(folder)
   children = folder.children.find_all
   children.each do |child|
     if child.class == RbVmomi::VIM::VirtualMachine
-      if child.runtime.powerState == 'poweredOn' && child.config.name =~ /(-vcd-[a-z]$)|(-vcd-nfs$)/
+      if child.runtime.powerState == 'poweredOn' && child.config.name =~ @vmregex
         @vms.push child.name
           clear_line
           print "[ " + "INFO".green + " ] #{child.name} added to inventory"
@@ -91,17 +94,22 @@ def port_check(vm, port)
           @successList.push vm
       rescue
         clear_line
-        print '[ ' + 'INFO'.green + " ] Could not connect to #{vmw}"
+        print '[ ' + 'INFO'.green + " ] Could not connect to #{vm}"
         @failedList.push vm
       end #second begin
     end #timeout
   rescue Timeout::Error
     clear_line
-    print '[ ' + 'INFO'.green + " ] Could not connect to #{vmw}"
+    print '[ ' + 'INFO'.green + " ] Could not connect to #{vm}"
     @failedList.push vm
   end #first begin
 end #def port_check
 
+def get_adPass
+  jPass = `base64 -d ~/.secretserver/ss_creds`
+  pArray = JSON.parse(jPass)
+  pArray['AD PASSWORD']
+end
 
 #configure logging
 executeUser = `whoami`.chomp
@@ -116,14 +124,19 @@ puts "[ " + "INFO".green + " ] Logging started search #{script_name}[#{pid}] in 
 @podList = []
 @failedList = []
 @successList = []
+@vmregex = Regexp.new opts[:vmregex]
 adUser = executeUser + '@ad.prod.vpc.vmw'
 successFile = '/tools-export/scripts/Ruby/outputs/vms_for_zenoss'
 failedFile = '/tools-export/scripts/Ruby/outputs/failed_vms_for_zenoss'
 
-#Prompt for AD Pass and verify it
-adPassAsk = ask("Please enter you AD Password") { |q| q.echo="*"}
-#verify AD password
-adPass = verifyAD_Pass(`hostname`.chomp, executeUser, adPassAsk)
+if opts[:automated] == true
+  adPass = get_adPass
+else
+  #Prompt for AD Pass and verify it
+  adPassAsk = ask("Please enter you AD Password") { |q| q.echo="*"}
+  #verify AD password
+  adPass = verifyAD_Pass(`hostname`.chomp, executeUser, adPassAsk)
+end
 
 if opts[:all_pods] == true
   clear_line
