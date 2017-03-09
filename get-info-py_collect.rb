@@ -10,7 +10,7 @@ require 'rest-client'
 #command line options
 opts = Trollop::options do
   #Required parameters
-  opt :vmregex, "Regex. Example: (vcd-[a-f]$|oss-mgmt-puppet|vccmt)", :type => :string, :required => false, :default => '(-vcd-[a-z]$)|(-vcd-nfs$)|(-vcdse-[a-f])|(oss-mgmt-puppet)|(mgmt-vccmt)|(mgmt-netsvc-)|(linjump)|(centosrepo)|(mgmt-ca)'
+  opt :vmregex, "Regex. Example: (vcd-[a-f]$|oss-mgmt-puppet|vccmt)", :type => :string, :required => false, :default => '(-vcd-[a-z]$)|(-vcd-nfs$)|(-vcdse-[a-f])|(oss-mgmt-puppet)|(mgmt-vccmt)|(mgmt-netsvc-)|(linjump)|(centosrepo)|(mgmt-ca$)'
   opt :file_output, "File to place the output in.", :type => :string, :required => false
   opt :remove_build_vms, "Option to remove vRealms still in Cloud Build Process", :required => false
 end
@@ -32,7 +32,7 @@ successList = []
 vmregex = Regexp.new opts[:vmregex]
 
 #connect to ops reporting DB as dbmonitor user
-client = TinyTds::Client.new username: 'dbmonitor', password: 'Gqt51093g8', host: 'd0p1tlm-opsrep', database: 'py_collector', timeout: 90
+  client = TinyTds::Client.new username: 'dbmonitor', password: 'Gqt51093g8', host: 'd0p1tlm-opsrep', database: 'py_collector', timeout: 90
 
 #get the 5 latest session id's and select the second largest one
 result = client.execute("SELECT TOP 5 id from [Py_collect].sessions order by id desc")
