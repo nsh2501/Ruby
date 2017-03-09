@@ -111,6 +111,9 @@ db_results = tlm_results
 db_results.concat oss_results
 db_results.concat vc_results
 
+#close out DB connection
+client.close
+
 #select all results that match Regex
 py_collect_vms += tlm_results.select do |vm|
   vm[0] =~ vmregex

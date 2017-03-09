@@ -50,6 +50,9 @@ oss_results = oss_result.each(:symbolize_keys => true, :as => :array, :cache_row
 vc_result = client.execute("SELECT hostname FROM [Py_collect].inv_vsphere_vc WHERE session_id = '#{id}' AND api_version = '6'")
 vc_results = vc_result.each(:symbolize_keys => true, :as => :array, :cache_rows => true, :empty_sets => true) do |rowset| end
 
+#close out connection when done
+client.close
+
 #add '-os' to the end of each VM in vc_restuls
 vc_results.each do |vc|
   vc[0].concat '-os'
