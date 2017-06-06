@@ -6,6 +6,7 @@ require 'yaml'
 require 'json'
 require 'syslog/logger'
 require 'net/ssh'
+require 'vmware_secret_server'
 
 #procss ID
 pid = Process.pid
@@ -33,16 +34,19 @@ Trollop::die :target_vcd_version, "Must Match X.Y.Z" unless /^\d[.]\d[.]\d$/.mat
 Trollop::die :target_vcd_build, "Must Match 1234567" unless /^\d{7}$/.match(opts[:target_vcd_build]) if opts[:target_vcd_build]
 
 #methods
-def get_password(resource, username)
-  resource_pass = `/tools-export/Scripts/functions/pmpcli_rest #{resource} #{username}`.chomp
-  if resource_pass == ""
-    #puts "Password not found for #{resource}, using default.".yellow
-    resource_pass = 'm0n3yb0vin3'
+def get_password(adpass, secret, ss_url)
+  ss_connection = Vmware_secret_server::Session.new(ss_url, 'ad', adpass)
+  ss_password = ss_connection.get_password(secret)
+  if ss_password.is_a? Exception
+    puts '[ ' + 'ERROR'.red + " ] Could not get password for #{secret} in Secret Server. Error is #{ss_password.message}"
+    return 'ERROR'
+  else 
+    puts '[ ' + 'INFO'.green + " ] Successfully pulled password from Secret Server for #{secret}"
+    return ss_password
   end
-  return resource_pass
 end
 
-def ssh_conn(vm, user)
+def ssh_conn(vm, user, ss_url, adpass)
   access = 'false'
   count = 0
   puts "[ " + "INFO".green + " ] #{vm}: Attempting to connect via PMP Password with user #{user}"
@@ -50,9 +54,9 @@ def ssh_conn(vm, user)
   if user == 'administrator@vsphere.local'
     pass = 'vmware'
   else
-    pass = get_password(vm, user)
+    pass = get_password(adpass, "#{user}@#{vm}", ss_url)
   end
-  
+
   while access == 'false'
     begin
       session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
@@ -83,7 +87,7 @@ def ssh_conn2(vm, user, pass)
       access = 'true'
       puts '[ ' + 'INFO'.green + " ] AD Authentication successful"
       session.close
-    rescue Net::SSH::AuthenticationFailed 
+    rescue Net::SSH::AuthenticationFailed
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password."
         pass = ask("Please enter your Ad Password") { |q| q.echo="*"}
     end
@@ -101,6 +105,14 @@ puts "[ " + "INFO".green + " ] Logging started search #{script_name}[#{pid}] in 
 #static variables
 yaml_file = ENV["HOME"] + "/#{script_name}.#{pid}"
 
+#environment variables
+localVM = ENV['HOSTNAME']
+domain = localVM.split('.')[1..-1].join('.')
+numbers = localVM.scan(/\d+/)
+pod_id = 'd' + numbers[0] + 'p' + numbers[1]
+ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{domain}/SecretServer/webservices/SSWebservice.asmx?wsdl"
+
+#user variables
 opts[:ad_username] = `whoami`.chomp
 adPassAsk = ask("Please enter you AD Password") { |q| q.echo="*"}
 #validate adPassword
@@ -116,14 +128,14 @@ opts[:vrealms].each { |vrealm|
   opts[:target_vrealm] = vrealm_numbers[2]
 
   if opts[:action].downcase =~ /\w+_hosts/
-    opts[:ipmi_password] = get_password('ipmi-dXpXsXchXsrvX', 'ADMIN')
-    opts[:vcenter_root_password] = ssh_conn(vc, 'root')
+    opts[:ipmi_password] = get_password(opts[:ad_password], 'ADMIN@ipmi-dXpXsXchXsrvX', ss_url)
+    opts[:vcenter_root_password] = ssh_conn(vc, 'root', ss_url, opts[:ad_password])
   else
-    opts[:target_vcenter_root_password] = ssh_conn(vc, 'root')
-    opts[:target_vcenter_sso_password] = ssh_conn(vc, 'administrator@vsphere.local')
+    opts[:target_vcenter_root_password] = ssh_conn(vc, 'root', ss_url, opts[:ad_password])
+    opts[:target_vcenter_sso_password] = ssh_conn(vc, 'administrator@vsphere.local', ss_url, opts[:ad_password])
     if opts[:action].downcase =~ /\w+_praxis_parent/
       sso = vrealm + "mgmt-sso-a"
-      opts[:sso_root_password] = ssh_conn(sso, 'root')
+      opts[:sso_root_password] = ssh_conn(sso, 'root', ss_url, opts[:ad_password])
     end
     if opts[:action].downcase =~ /precheck_vrealm_vcenter/
       opts[:target_vcd_version] = '8.1.1'
@@ -172,7 +184,7 @@ opts[:vrealms].each { |vrealm|
     exit
   end
 
- 
+
   #Create Yaml File for use
   puts '[ ' + 'INFO'.green + " ] Creating #{yaml_file}"
   $logger.info "INFO - Creating #{yaml_file}"

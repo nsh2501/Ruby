@@ -7,9 +7,7 @@ require 'colorize'
 require 'syslog/logger'
 require 'rbvmomi'
 require 'net/ssh'
-
-#personal functions
-require_relative "/home/nholloway/scripts/Ruby/functions/get_password.rb"
+require 'vmware_secret_server'
 
 #pid
 pid = Process.pid
@@ -75,6 +73,20 @@ def verifyAD_Pass(vm, user, pass)
   return pass
 end
 
+def get_password(adpass, secret, ss_url)
+  ss_connection = Vmware_secret_server::Session.new(ss_url, 'ad', adpass)
+  ss_password = ss_connection.get_password(secret)
+  if ss_password.is_a? Exception
+    clear_line
+    puts '[ ' + 'ERROR'.red + " ] Could not get password for #{secret} in Secret Server. Error is #{ss_password.message}"
+    return 'ERROR'
+  else 
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Successfully pulled password from Secret Server for #{secret}"
+    return ss_password
+  end
+end
+
 #configure logging
 executeUser = `whoami`.chomp
 script_name = 'nsxUserUpdate'
@@ -86,13 +98,18 @@ puts "[ " + "INFO".green + " ] Logging started search #{script_name}[#{pid}] in 
 #variables
 vrealms = []
 @vms = []
-capUser = 'cap-p1osswinjump'
-capPass = get_password('d0p1oss-mgmt-winjump',capUser)
-capUser.concat "@ad.prod.vpc.vmw"
+localVM = ENV['HOSTNAME']
+domain = localVM.split('.')[1..-1].join('.')
+numbers = localVM.scan(/\d+/)
+pod_id = 'd' + numbers[0] + 'p' + numbers[1]
+ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{domain}/SecretServer/webservices/SSWebservice.asmx?wsdl"
+runuser = `whoami`.chomp
+ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
+adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
+
 
 #get list of pods if pods is specified
 unless opts[:pods].nil?
-  verifyAD_Pass('d0p1oss-mgmt-linjump', capUser, capPass)
   opts[:pods].each do |pod|
     podSubnet = pod.to_i * 2
     vcenter = "10.#{podSubnet}.3.2"
@@ -129,7 +146,9 @@ vrealms.each do |vrealm|
   nsxAccess = 'false'
   nsxName = "#{vrealm}mgmt-vsm0"
   nsxUser = opts[:user]
-  adminPass = get_password(nsxName, 'admin')
+  secret = 'admin@' + nsxName
+  adminPass = get_password(adPass, secret, ss_url)
+  next if adminPass =~ /ERROR/
   baseUrl = "https://#{nsxName}/api/2.0/services/usermgmt"
 
   #get session for user
@@ -183,6 +202,8 @@ vrealms.each do |vrealm|
       roleUrl.concat "/role/#{nsxUser}"
       roleSession = rest_session(roleUrl, 'admin', adminPass)
 
+      require 'pry';binding.pry
+
       #Get Role
       clear_line
       print '[ ' + 'INFO'.green + " ] Getting NSX Role for user #{nsxUser} on #{nsxName}"
@@ -225,3 +246,4 @@ end
 clear_line
 puts '[ ' + 'INFO'.green + " ] No more vRealms to check. Script completed."
 logger.info "INFO - No more vRealms to check"
+
