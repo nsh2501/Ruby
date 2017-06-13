@@ -34,8 +34,20 @@ def pupdb_query(podID, endpoint, query)
   end
 end
 
-def check_dns(vm)
-  `/usr/bin/nslookup #{vm} | /bin/grep -q NXDOMAIN;if [ $? -eq 0 ];then echo false;else echo true;fi`.chomp
+def check_dns(vm, domain)
+  if vm =~ /^p\d{1,2}v\d{1,2}.*/
+    numbers = vm.scan(/\d+/)
+    podlist = f_pod_list(domain)
+    podid = podlist.find { |x| x =~ /d\d+p#{numbers[0]}/ }
+    if vm = /vccmt/
+      vm_hname = "#{podid}v#{numbers[1]}mgmt-vccmt0.prod.vpc.vmw"
+    else
+      vm_hname = vm
+  else
+    vm = vm_hname
+  end
+
+  `/usr/bin/nslookup #{vm_hname} | /bin/grep -q NXDOMAIN;if [ $? -eq 0 ];then echo false;else echo true;fi`.chomp
 end
 
 def get_old(podID)
@@ -58,7 +70,7 @@ nodes.each do |x|
   unless x['report_timestamp'].nil?
     rtime = Time.parse(x['report_timestamp'])
     if yesterday > rtime
-      dns = check_dns("#{x['certname']}")
+      dns = check_dns("#{x['certname']}", domain)
       if dns == 'true'
         oldArray["#{x['certname']}"] = Hash.new
         oldArray["#{x['certname']}"]['timestamp'] = "#{x['report_timestamp']}"
@@ -67,7 +79,7 @@ nodes.each do |x|
     end
   end
   if x['report_timestamp'].nil?
-    dns = check_dns("#{x['certname']}")
+    dns = check_dns("#{x['certname']}", domain)
     if dns == 'true'
       oldArray["#{x['certname']}"] = Hash.new
       oldArray["#{x['certname']}"]['timestamp'] = "Nil Timestamp"
@@ -160,7 +172,7 @@ py_collect_vms_array.reject! { |vm| vm.match("d12p18") }
 
 #get list of missing VMs and check if DNS is configure for the VM
 missing_vms = py_collect_vms_array - puppetdb_vms
-missing_vms.delete_if { |vm| check_dns(vm) == 'false' }
+missing_vms.delete_if { |vm| check_dns(vm, domain) == 'false' }
 
 #if email then send out email, otherwise print to screen
 if opts[:email].nil?
