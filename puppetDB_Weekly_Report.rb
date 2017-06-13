@@ -39,12 +39,13 @@ def check_dns(vm, domain)
     numbers = vm.scan(/\d+/)
     podlist = f_pod_list(domain)
     podid = podlist.find { |x| x =~ /d\d+p#{numbers[0]}/ }
-    if vm = /vccmt/
+    if vm =~ /vccmt/
       vm_hname = "#{podid}v#{numbers[1]}mgmt-vccmt0.prod.vpc.vmw"
     else
       vm_hname = vm
+    end
   else
-    vm = vm_hname
+    vm_hname = vm
   end
 
   `/usr/bin/nslookup #{vm_hname} | /bin/grep -q NXDOMAIN;if [ $? -eq 0 ];then echo false;else echo true;fi`.chomp
