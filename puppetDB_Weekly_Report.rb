@@ -51,7 +51,7 @@ def check_dns(vm, domain)
   `/usr/bin/nslookup #{vm_hname} | /bin/grep -q NXDOMAIN;if [ $? -eq 0 ];then echo false;else echo true;fi`.chomp
 end
 
-def get_old(podID)
+def get_old(podID, domain)
 query = nil
 yesterday = (DateTime.now - 1).to_time
 begin
@@ -144,7 +144,7 @@ end
 #get all vms from puppetdb
 podList.each do |pod|
   puppetdb_vms_all += JSON.parse(pupdb_query(pod, 'nodes', ' '))
-  oldVMs = get_old(pod)
+  oldVMs = get_old(pod, domain)
   unless oldVMs.nil?
     oldArray = oldArray.merge(oldVMs)
   end
