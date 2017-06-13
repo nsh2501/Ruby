@@ -118,8 +118,9 @@ end
 end
 
 #variables
+domain = ENV["HOSTNAME"].split(".")[1]
 if opts[:pods].nil?
-podList = f_pod_list
+podList = f_pod_list(domain)
 else
 podList = opts[:pods]
 end

@@ -79,11 +79,12 @@ end
 
 
 #variables
+domain = ENV["HOSTNAME"].split(".")[1]
 py_collect_vms = []
 py_collect_vms_array = []
 puppetdb_vms_all = []
 puppetdb_vms = []
-podList = f_pod_list
+podList = f_pod_list(domain)
 oldArray = {}
 issues = false
 vmregex = Regexp.new opts[:vmregex]
