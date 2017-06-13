@@ -59,16 +59,20 @@ nodes.each do |x|
     rtime = Time.parse(x['report_timestamp'])
     if yesterday > rtime
       dns = check_dns("#{x['certname']}")
-      oldArray["#{x['certname']}"] = Hash.new
-      oldArray["#{x['certname']}"]['timestamp'] = "#{x['report_timestamp']}"
-      oldArray["#{x['certname']}"]['dns'] = dns
+      if dns == 'true'
+        oldArray["#{x['certname']}"] = Hash.new
+        oldArray["#{x['certname']}"]['timestamp'] = "#{x['report_timestamp']}"
+        oldArray["#{x['certname']}"]['dns'] = dns
+      end
     end
   end
   if x['report_timestamp'].nil?
     dns = check_dns("#{x['certname']}")
-    oldArray["#{x['certname']}"] = Hash.new
-    oldArray["#{x['certname']}"]['timestamp'] = "Nil Timestamp"
-    oldArray["#{x['certname']}"]['dns'] = dns
+    if dns == 'true'
+      oldArray["#{x['certname']}"] = Hash.new
+      oldArray["#{x['certname']}"]['timestamp'] = "Nil Timestamp"
+      oldArray["#{x['certname']}"]['dns'] = dns
+    end
   end
 end
   unless oldArray.empty? || oldArray.nil?
