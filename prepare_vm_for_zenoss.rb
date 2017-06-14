@@ -9,6 +9,8 @@ require 'vmware_secret_server'
 require 'highline/import'
 require 'net/scp'
 
+require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
+
 #options
 opts = Trollop::options do 
   opt :vmregex, 'Regex. Example: (d0p1v\d+-mgmt-vcd-[a-f])|(oss-mgmt-puppet)', :type => :string, :required => false
@@ -108,20 +110,6 @@ def py_query(user, password, host, database, vmregex)
 
   unless regex_match.empty?
     return regex_match
-  end
-end
-
-def get_password(adpass, secret, ss_url)
-  ss_connection = Vmware_secret_server::Session.new(ss_url, 'ad', adpass)
-  ss_password = ss_connection.get_password(secret)
-  if ss_password.is_a? Exception
-    clear_line
-    puts '[ ' + 'ERROR'.red + " ] Could not get password for #{secret} in Secret Server. Error is #{ss_password.message}"
-    return 'ERROR'
-  else 
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Successfully pulled password from Secret Server for #{secret}"
-    return ss_password
   end
 end
 
@@ -583,12 +571,13 @@ sqlhost = 'd0p1tlm-opsrep'
 sqldb = 'py_collector'
 runuser = `whoami`.chomp
 localVM = ENV['HOSTNAME']
-domain = localVM.split('.')[1..-1].join('.')
+domain = localVM.split('.')[1]
+full_domain = localVM.split('.')[1..-1].join('.')
 numbers = localVM.scan(/\d+/)
 pod_id = 'd' + numbers[0] + 'p' + numbers[1]
 ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
 adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
-ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{domain}/SecretServer/webservices/SSWebservice.asmx?wsdl"
+ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{full_domain}/SecretServer/webservices/SSWebservice.asmx?wsdl"
 zen_sudo_md5sum = '8f76df75ff79d3a278ea1289f65dc60c'
 zen_password = 'pae4daiv3zahW'
 vm_user = opts[:user]
@@ -596,7 +585,7 @@ vm_input_file = '/tools-export/scripts/Ruby/outputs/vmList'
 zen_sudo_cfg_source_file = '/home/nholloway/scripts/Ruby/files/25_zenmonitor'
 
 #determine environment and correct ssh key
-case domain.split('.')[0]
+case domain
   when 'psd'
     zen_pub_key = '/home/nholloway/scripts/Ruby/files/psd_zen.pub'
     zen_pub_key_md5sum = `md5sum #{zen_pub_key}`
@@ -614,7 +603,7 @@ case domain.split('.')[0]
     zen_pub_key_md5sum = `md5sum #{zen_pub_key}`
     zen_pub_key_md5sum = zen_pub_key_md5sum.chomp.split(' ')[0]
 else
-  puts '[ ' + 'ERROR'.red + " ] Do not recognize environment #{domain.split('.')[0]}"
+  puts '[ ' + 'ERROR'.red + " ] Do not recognize environment #{domain}"
   exit
 end
 

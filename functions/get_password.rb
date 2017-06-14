@@ -1,6 +1,14 @@
 require 'vmware_secret_server'
 
-def get_password(adpass, secret, ss_url, domain)
+def get_password(adpass, secret, domain)
+  case domain
+  when 'prod'
+    ss_url = "https://d0p1oss-mgmt-secret-web0.prod.vpc.vmw/SecretServer/webservices/SSWebservice.asmx?wsdl"
+  when 'stage'
+    ss_url = "https://d2p2oss-mgmt-secret-web0.stage.vpc.vmw/SecretServer/webservices/SSWebservice.asmx?wsdl"
+  else
+    puts '[ ' + 'ERROR'.red + " ] Unkown domain. #{domain}"
+  end
   ss_connection = Vmware_secret_server::Session.new(ss_url, 'ad', adpass)
   ss_password = ss_connection.get_password(secret)
   if ss_password.is_a? Exception
