@@ -10,6 +10,7 @@ require 'highline/import'
 require 'net/scp'
 
 require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 #options
 opts = Trollop::options do 
@@ -17,6 +18,7 @@ opts = Trollop::options do
   opt :vms, "List of VMs that you would like to run this against", :type => :strings, :requred => false
   opt :user, "The user to log into the server with. All servers must use the same user", :type => :string, :required => false, :default => 'root'
   opt :verify_only, "Switch. Use this option if you do not want to make any changes on the server", :type => :boolean, :required => false, :default => false
+  opt :invoke, "Switch. Set this option if you need to use the console to turn on root ssh access", :type => :boolean, :required => false, :default => false
 end
 
 if opts[:vmregex].nil? && opts[:vms].nil?
@@ -30,12 +32,6 @@ if !opts[:vmregex].nil? && !opts[:vms].nil?
 end
 
 #functions 
-def clear_line ()
-  print "\r"
-  print "                                                                                                                                       "
-  print "\r"
-end
-
 def ssh_exec!(ssh, command)
   stdout_data = ""
   stderr_data = ""
@@ -115,17 +111,17 @@ end
 
 def verifyAD_Pass(vm, user, pass)
   access = 'false'
-  clear_line
+  format.clear_line
   print '[ ' + 'INFO'.green + " ] Verifying AD Password"
   while access == 'false'
     begin
       session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
       access = 'true'
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] AD Authentication successful"
       session.close
     rescue Net::SSH::AuthenticationFailed 
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password provided."
         pass = ask("Please enter your AD Password") { |q| q.echo="*"}
     end
@@ -137,13 +133,13 @@ def verify_vm_password(user, vm, password)
   begin
     session = Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0)
   rescue => e
-    clear_line
+    format.clear_line
     puts '[ ' + 'ERROR'.red + " ] Failed to login to #{vm} with password in secret server"
     puts e
     return 'FAILED'
   end
   if session.nil?
-    clear_line
+    format.clear_line
     puts '[ ' + 'ERROR'.red + " ] Could not login with password with password. Please verify password in Secret Server and try again."
     return 'FAILED'
   else
@@ -161,7 +157,7 @@ def check_os(vm, user, password)
     end
   
     if result[0].chomp != 'CentOS' && result[0].chomp != 'SUSE'
-      clear_line
+      format.clear_line
       puts '[ ' + 'ERROR'.red + " ] Could not determine the OS. Skipping this VM."
       return 'ERROR'
     else
@@ -195,39 +191,39 @@ def sshd_config_chk(user, vm, password, os, verify_only)
 
     result = ssh_exec!(ssh, verify_sshd_maxsession_cmd)
     if result[2] != 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] SSHD config is correct."
       return 'SUCCESS'
     end
 
     if verify_only == true
-      clear_line
+      format.clear_line
       puts '[ ' + 'WARN'.yellow + " ] SSHD config needs to be modified on #{vm}"
       return 'FAILED'
     end
 
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Removing MaxSessions from sshd_config"
     result = ssh_exec!(ssh, remove_line_sshd_cfg)
     if result[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Successfully removed MaxSessions from sshd_confg. Restarting service"
     else
-      clear_line
+      format.clear_line
       puts '[ ' + 'ERROR'.red + " ] Failed to remove line from sshd_config on #{vm}. Please see below error"
       puts result
       return 'FAILED'
     end
 
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Restarting sshd now."
     result = ssh_exec!(ssh, restart_sshd_cmd)
     if result[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Successfully restarted sshd."
       return 'SUCCESS'
     else
-      clear_line
+      format.clear_line
       puts '[ ' + 'ERROR'.red + " ] Failed to restart sshd"
       return 'FAILED'
     end
@@ -236,7 +232,7 @@ end
 
 def verify_puppet(user, vm, password)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Verifying if Ops puppet is installed/configured on #{vm}."
     if user == 'root'
       verify_puppet = 'grep -q -i PuppetCodeVer /etc/issue'
@@ -245,11 +241,11 @@ def verify_puppet(user, vm, password)
     end
     result_cmd = ssh_exec!(ssh, verify_puppet)
     if result_cmd[2] == 0
-      clear_line
+      format.clear_line
       puts '[ ' + 'INFO'.green + " ] Puppet found on #{vm}. Skipping the other checks."
       return 'true'
     else
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Puppet not found on #{vm}. Continuing with other checks"
       return 'false'
     end
@@ -260,7 +256,7 @@ def zenmonitor_user (user, vm, password, zen_password, verify_only)
   add_user = false
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
     #verify if zenmonitor user exists and create it if necessary
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Verifying if the user zenmonitor exists."
     verify_zenmonitor = 'grep -q -i zenmonitor /etc/passwd'
     if user != 'root'
@@ -268,25 +264,25 @@ def zenmonitor_user (user, vm, password, zen_password, verify_only)
     end
     result_cmd = ssh_exec!(ssh, verify_zenmonitor)
     if result_cmd[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] zenmonitor user exists on server"
     else
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] zenmonitor needs to be added on server"
       add_user = true
     end
 
     if verify_only == false && add_user == true
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Adding zenmonitor user"
       #add user
       add_zenmonitor_cmd = 'adduser zenmonitor'
       result = ssh_exec!(ssh, add_zenmonitor_cmd)
       if result[2] == 0
-        clear_line
+        format.clear_line
         print '[ ' + 'INFO'.green + " ] Zenmonitor user successfully added."
       else
-        clear_line
+        format.clear_line
         puts '[ ' + 'ERROR'.red + " ] Failed to add zenmonitor user. Error was #{result[0]}"
         return 'FAILED'
       end
@@ -294,10 +290,10 @@ def zenmonitor_user (user, vm, password, zen_password, verify_only)
       set_pass_cmd = "echo #{zen_password} | passwd --stdin zenmonitor"
       result = ssh_exec!(ssh, set_pass_cmd)
       if result[2] == 0
-        clear_line
+        format.clear_line
         print '[ ' + 'INFO'.green + " ] Successfully set password for zenmonitor"
       else
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Failed to set password on #{vm} for user zenmonitor but will continue"
       end
     end
@@ -307,7 +303,7 @@ end
 
 def sudo_installed(user, vm, password, os, verify_only)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Checking to see if sudo package is installed"
     if user == 'root'
       verify_sudo_cmd = 'rpm -qa | grep -i sudo'
@@ -319,34 +315,34 @@ def sudo_installed(user, vm, password, os, verify_only)
     result = ssh_exec!(ssh, verify_sudo_cmd)
 
     if result[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Sudo is installed"
       return 'TRUE'
     else
       if verify_only != true
-        clear_line
+        format.clear_line
         print '[ ' + 'INFO'.green + " ] Sudoers is not installed"
         if os == 'CentOS'
-          clear_line
+          format.clear_line
           print '[ ' + 'INFO'.green + " ] Installing sudo now."
           result = ssh_exec!(ssh, install_sudo_cmd)
           if result[2] == 0
-            clear_line
+            format.clear_line
             print '[ ' + 'INFO'.green + " ] Successfully installed Sudo"
             return 'TRUE'
           else
-            clear_line
+            format.clear_line
             puts '[ ' + 'ERROR'.red + " ] Ran into below error when installing sudo on #{vm}"
             puts "#{result}"
             return 'FALSE'
           end
         else
-          clear_line
+          format.clear_line
           puts '[ ' + 'ERROR'.red + " ] SUDO is not installed on #{vm}. This script only supports auto installs on CentOS."
           return 'FALSE'
         end
       else
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Sudo not installed #{vm} and verify only set to true."
         return 'FALSE'
       end
@@ -356,7 +352,7 @@ end
 
 def sudo_config(user, vm, password, os, verify_only)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Verifying sudoers config on #{vm}"
     if user == 'roo'
       sudoers_cmd = 'grep -q ^#includedir /etc/sudoers.d' + ' /etc/sudoers'
@@ -368,26 +364,26 @@ def sudo_config(user, vm, password, os, verify_only)
     end
     result = ssh_exec!(ssh, sudoers_cmd)
     if result[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Sudoers Config File looks good"
       return 'SUCCESS'
     else
       if verify_only == false
-        clear_line
+        format.clear_line
         print '[ ' + 'INFO'.green + " ] Sudoers config not found. Adding line to config file"
         result = ssh_exec!(ssh, add_sudoers_cmd)
         if result[2] == 0
-          clear_line
+          format.clear_line
           print '[ ' + 'INFO'.green + " ] Successfully added sudoers config"
           return 'SUCCESS'
         else
-          clear_line
+          format.clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to modify sudoers config. Below is the error messages"
           puts result
           return 'FAILED'
         end
       else
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Sudoers config not correct on #{vm}. Not correcting as verify_only option set"
         return 'FAILED'
       end
@@ -397,7 +393,7 @@ end
 
 def zen_sudo_cfg(user, vm, password, os, verify_only, zen_md5sum, zen_sudo_cfg_source_file)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
-    clear_line
+    format.clear_line
     print '[ ' + 'INFO'.green + " ] Verifying sudo config for user zenmonitor"
 
     #verify user == root else use sudo commands
@@ -416,28 +412,28 @@ def zen_sudo_cfg(user, vm, password, os, verify_only, zen_md5sum, zen_sudo_cfg_s
 
     #check to see if md5sum matches the one on file
     if result[0].chomp == zen_md5sum
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] User zenmonitor config is correct"
       return 'SUCCESS'
     else
       if verify_only == true
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Zenmonitor sudo config not correct on #{vm}. Not fixing as verify_only is set"
         return 'FAILED'
       else
-        clear_line
+        format.clear_line
         #create folder
         ssh_exec!(ssh, create_folder)
         print '[ ' + 'INFO'.green + " ] Adding zenmonitor sudoers config."
         Net::SCP.start(vm, user, :password => password) do |scp|
           begin
             scp.upload! zen_sudo_cfg_source_file, '/etc/sudoers.d/25_zenmonitor'
-            clear_line
+            format.clear_line
             print '[ ' + 'INFO'.green + " ] Zenmonitor sudo config has been successfully uploaded"
             ssh_exec!(ssh, update_perm_zen_cfg)
             return 'SUCCESS'
           rescue => e
-            clear_line
+            format.clear_line
             puts '[ ' + 'WARN'.yellow + " ] Failed to upload zen monitor config on #{vm}. See error below"
             puts e
             return 'FAILED'
@@ -467,7 +463,7 @@ def zenmonitor_user(user, vm, password, zen_password, verify_only)
     result = ssh_exec!(ssh, verify_zen_user_cmd)
 
     if result[2] == 0
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] Zenmonitor user exists"
       add_zen_user = false
       return 'SUCCESS'
@@ -475,7 +471,7 @@ def zenmonitor_user(user, vm, password, zen_password, verify_only)
 
     if verify_only == true
       if add_zen_user == true
-        clear_line
+        format.clear_line
         puts '[ ' + 'WARN'.yellow + " ] Zenmonitor user does not exist on #{vm} and will need to be added. Not performing this action as verify_only is set to true"
         return 'FAILED'
       else
@@ -485,16 +481,16 @@ def zenmonitor_user(user, vm, password, zen_password, verify_only)
       if add_zen_user == false
         return 'SUCCESS'
       else
-        clear_line
+        format.clear_line
         print '[ ' + 'INFO'.green + " ] Adding zenmonitor user"
         result = ssh_exec!(ssh, add_zen_user_cmd)
         if result[2] == 0
-          clear_line
+          format.clear_line
           print '[ ' + 'INFO'.green + " ] User zenmonitor created successfully"
           ssh_exec!(ssh, create_dirs_cmd)
           return 'SUCCESS'
         else
-          clear_line
+          format.clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to add user zenmonitor on #{vm}. Please see below error"
           puts result
           return 'FAILED'
@@ -518,17 +514,17 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
 
     #check if md5sum matches from source file
     if md5sum_server == zen_pub_key_md5sum
-      clear_line
+      format.clear_line
       print '[ ' + 'INFO'.green + " ] md5sum matches source"
       return 'SUCCESS'
     else
-      clear_line
+      format.clear_line
       print '[ ' + 'WARN'.yellow + " ] md5sum does not match. Replacing file."
       add_zen_ssh_key = true
     end
 
     if verify_only == true
-      clear_line
+      format.clear_line
       puts '[ ' + 'WARN'.yellow + " ] Zenmonitor authorized_keys needs to be updated on #{vm}. No action being taken as verify_only is true"
       return 'FAILED'
     end
@@ -537,10 +533,10 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
       Net::SCP.start(vm, user, :password => password) do |scp|
         begin
           scp.upload! zen_pub_key, '/home/zenmonitor/.ssh/authorized_keys'
-          clear_line
+          format.clear_line
           print '[ ' + 'INFO'.green + " ] File uploaded successfully. Modifying permissions now."
         rescue => e
-          clear_line
+          format.clear_line
           puts '[ ' + 'ERROR'.red + " ] Unknown error occured when performing scp on zenmonitor ssh key. Please see below error"
           puts e
           return 'FAILED'
@@ -548,11 +544,11 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
         modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys'
         result = ssh_exec!(ssh, modify_perms)
         if result[2] == 0
-          clear_line
+          format.clear_line
           print '[ ' + 'INFO'.green + " ] Modified pemissions of zenmonitor ssh authorized keys folder"
           return 'SUCCESS'
         else
-          clear_line
+          format.clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to modify permissions on authorized keys folder for #{vm}. Please see belos."
           puts result
           return 'FAILED'
@@ -565,6 +561,7 @@ end
 
 
 #variables
+format = Format.new
 sqluser = 'dbmonitor'
 sqlpass = 'Gqt51093g8'
 sqlhost = 'd0p1tlm-opsrep'
@@ -574,15 +571,14 @@ localVM = ENV['HOSTNAME']
 domain = localVM.split('.')[1]
 full_domain = localVM.split('.')[1..-1].join('.')
 numbers = localVM.scan(/\d+/)
-pod_id = 'd' + numbers[0] + 'p' + numbers[1]
 ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
 adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
-ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{full_domain}/SecretServer/webservices/SSWebservice.asmx?wsdl"
 zen_sudo_md5sum = '8f76df75ff79d3a278ea1289f65dc60c'
 zen_password = 'pae4daiv3zahW'
 vm_user = opts[:user]
 vm_input_file = '/tools-export/scripts/Ruby/outputs/vmList'
 zen_sudo_cfg_source_file = '/home/nholloway/scripts/Ruby/files/25_zenmonitor'
+podlist = []
 
 #determine environment and correct ssh key
 case domain
@@ -616,59 +612,72 @@ else
     vm_list = vms_from_file(vm_input_file, vmregex)
 end
 
-
 if vm_list.nil? || vm_list.empty?
-  clear_line
+  format.clear_line
   puts '[' + 'WARN'.yellow + "[ No VMs in the array. If using a regex please verify the regex"
 else
+  #get list of pods
   vm_list.each do |vm|
-    vmname = vm.split('.')[0]
-    secret = opts[:user] + '@' + vmname
-
-    #verify if password is in secret server
-    ss_password = get_password(adPass, secret, ss_url)
-    next if ss_password.match('ERROR')
-
-    #verify password in secret server works on server
-    vm_con = verify_vm_password(vm_user, vmname, ss_password)
-    next if vm_con.match('FAILED')
-
-    #verify if Ops Puppet server is installed 
-    puppet_configured = verify_puppet(vm_user, vmname, ss_password)
-    next if puppet_configured.match('true')
-
-    #verify OS of VM
-    os = check_os(vm, vm_user, ss_password)
-    next if os.match('ERROR')
-
-    #verify sshd
-    sshd_config_result = sshd_config_chk(vm_user, vm, ss_password, os, opts[:verify_only])
-    next if sshd_config_result.match('FAILED')
-
-    #verify sudo is installed and install it if necessary
-    sudoers = sudo_installed(vm_user, vm, ss_password, os, opts[:verify_only])
-    next if sudoers.match('FALSE')
-
-    #verify sudo config
-    sudo_cfg = sudo_config(vm_user, vm, ss_password, os, opts[:verify_only])
-    next if sudo_cfg.match('FAILED')
-
-    #verify/add zenmonitor config
-    zen_cfg_result = zen_sudo_cfg(vm_user, vm, ss_password, os, opts[:verify_only], zen_sudo_md5sum, zen_sudo_cfg_source_file)
-    next if zen_cfg_result.match('FAILED')
-
-    #verify zenmonitor user/password/ssh keys
-    zen_user_result = zenmonitor_user(vm_user, vm, ss_password, zen_password, opts[:verify_only])
-    next if zen_user_result.match('FAILED')
-
-    #connect to zenmonitor via ssh and verify/add authorized keys file
-    zen_ssh_key_result = zen_ssh_key('zenmonitor', vm, zen_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
-    next if zen_ssh_key_result.match('FAILED')
-
-    clear_line
-    puts '[ ' + 'INFO'.green + " ] #{vm} is ready for zenoss"
+    numbers = vm.scan(/\d+/)
+    podlist.push numbers[1]
   end
-  clear_line  
+
+  #remove any duplicates in podlist
+  podlist.uniq!
+
+  podlist.each do |pod|
+    #get list of vm's for each pod
+    pod_vm_list = vm_list.select { |x| x.match(/#{pod}/) }
+
+    pod_vm_list.each do |vm|
+      vmname = vm.split('.')[0]
+      secret = opts[:user] + '@' + vmname
+
+      #verify if password is in secret server
+      ss_password = get_password(adPass, secret, domain)
+      next if ss_password.match('ERROR')
+
+      #verify password in secret server works on server
+      vm_con = verify_vm_password(vm_user, vmname, ss_password)
+      next if vm_con.match('FAILED')
+
+      #verify if Ops Puppet server is installed 
+      puppet_configured = verify_puppet(vm_user, vmname, ss_password)
+      next if puppet_configured.match('true')
+
+      #verify OS of VM
+      os = check_os(vm, vm_user, ss_password)
+      next if os.match('ERROR')
+
+      #verify sshd
+      sshd_config_result = sshd_config_chk(vm_user, vm, ss_password, os, opts[:verify_only])
+      next if sshd_config_result.match('FAILED')
+
+      #verify sudo is installed and install it if necessary
+      sudoers = sudo_installed(vm_user, vm, ss_password, os, opts[:verify_only])
+      next if sudoers.match('FALSE')
+
+      #verify sudo config
+      sudo_cfg = sudo_config(vm_user, vm, ss_password, os, opts[:verify_only])
+      next if sudo_cfg.match('FAILED')
+
+      #verify/add zenmonitor config
+      zen_cfg_result = zen_sudo_cfg(vm_user, vm, ss_password, os, opts[:verify_only], zen_sudo_md5sum, zen_sudo_cfg_source_file)
+      next if zen_cfg_result.match('FAILED')
+
+      #verify zenmonitor user/password/ssh keys
+      zen_user_result = zenmonitor_user(vm_user, vm, ss_password, zen_password, opts[:verify_only])
+      next if zen_user_result.match('FAILED')
+
+      #connect to zenmonitor via ssh and verify/add authorized keys file
+      zen_ssh_key_result = zen_ssh_key('zenmonitor', vm, zen_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
+      next if zen_ssh_key_result.match('FAILED')
+
+      format.clear_line
+      puts '[ ' + 'INFO'.green + " ] #{vm} is ready for zenoss"
+    end
+    format.clear_line  
+  end
 end
 
 
