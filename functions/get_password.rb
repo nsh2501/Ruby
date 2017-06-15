@@ -2,7 +2,6 @@ require 'vmware_secret_server'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 def get_password(adpass, secret, domain)
-  format = Format.new
   case domain
   when 'prod'
     ss_url = "https://d0p1oss-mgmt-secret-web0.prod.vpc.vmw/SecretServer/webservices/SSWebservice.asmx?wsdl"
@@ -14,11 +13,11 @@ def get_password(adpass, secret, domain)
   ss_connection = Vmware_secret_server::Session.new(ss_url, 'ad', adpass)
   ss_password = ss_connection.get_password(secret)
   if ss_password.is_a? Exception
-    format.clear_line
+    clear_line
     puts '[ ' + 'ERROR'.red + " ] Could not get password for #{secret} in Secret Server. Error is #{ss_password.message}"
     return 'ERROR'
   else 
-    format.clear_line
+    clear_line
     print '[ ' + 'INFO'.green + " ] Successfully pulled password from Secret Server for #{secret}"
     return ss_password
   end
