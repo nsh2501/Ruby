@@ -15,7 +15,7 @@ def get_password(adpass, secret, domain)
   if ss_password.is_a? Exception
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Could not get password for #{secret} in Secret Server. Error is #{ss_password.message}"
-    return 'ERROR'
+    raise 'ERROR'
   else 
     clear_line
     print '[ ' + 'INFO'.green + " ] Successfully pulled password from Secret Server for #{secret}"

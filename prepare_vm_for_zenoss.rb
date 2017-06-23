@@ -8,6 +8,7 @@ require 'trollop'
 require 'vmware_secret_server'
 require 'highline/import'
 require 'net/scp'
+require 'rbvmomi'
 
 require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
@@ -18,7 +19,8 @@ opts = Trollop::options do
   opt :vms, "List of VMs that you would like to run this against", :type => :strings, :requred => false
   opt :user, "The user to log into the server with. All servers must use the same user", :type => :string, :required => false, :default => 'root'
   opt :verify_only, "Switch. Use this option if you do not want to make any changes on the server", :type => :boolean, :required => false, :default => false
-  opt :invoke, "Switch. Set this option if you need to use the console to turn on root ssh access", :type => :boolean, :required => false, :default => false
+  opt :no_ssh, "Switch. Set this option if you need to use the console to turn on root ssh access", :type => :boolean, :required => false, :default => false
+  opt :vcenter, "Specify vCenter of VMs if using no_ssh option. Example: tlm or oss", :type => :string, :required => false
 end
 
 if opts[:vmregex].nil? && opts[:vms].nil?
@@ -126,6 +128,8 @@ def verifyAD_Pass(vm, user, pass)
         pass = ask("Please enter your AD Password") { |q| q.echo="*"}
     end
   end
+
+
   return pass
 end
 
@@ -136,12 +140,12 @@ def verify_vm_password(user, vm, password)
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Failed to login to #{vm} with password in secret server"
     puts e
-    return 'FAILED'
+    raise 'FAILED'
   end
   if session.nil?
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Could not login with password with password. Please verify password in Secret Server and try again."
-    return 'FAILED'
+    raise 'FAILED'
   else
     return 'SUCCESS'
   end
@@ -159,7 +163,7 @@ def check_os(vm, user, password)
     if result[0].chomp != 'CentOS' && result[0].chomp != 'SUSE'
       clear_line
       puts '[ ' + 'ERROR'.red + " ] Could not determine the OS. Skipping this VM."
-      return 'ERROR'
+      raise 'ERROR'
     else
       return result[0].chomp
     end
@@ -199,7 +203,7 @@ def sshd_config_chk(user, vm, password, os, verify_only)
     if verify_only == true
       clear_line
       puts '[ ' + 'WARN'.yellow + " ] SSHD config needs to be modified on #{vm}"
-      return 'FAILED'
+      raise 'FAILED'
     end
 
     clear_line
@@ -212,7 +216,7 @@ def sshd_config_chk(user, vm, password, os, verify_only)
       clear_line
       puts '[ ' + 'ERROR'.red + " ] Failed to remove line from sshd_config on #{vm}. Please see below error"
       puts result
-      return 'FAILED'
+      raise 'FAILED'
     end
 
     clear_line
@@ -225,7 +229,7 @@ def sshd_config_chk(user, vm, password, os, verify_only)
     else
       clear_line
       puts '[ ' + 'ERROR'.red + " ] Failed to restart sshd"
-      return 'FAILED'
+      raise 'FAILED'
     end
   end
 end
@@ -243,7 +247,7 @@ def verify_puppet(user, vm, password)
     if result_cmd[2] == 0
       clear_line
       puts '[ ' + 'INFO'.green + " ] Puppet found on #{vm}. Skipping the other checks."
-      return 'true'
+      raise 'true'
     else
       clear_line
       print '[ ' + 'INFO'.green + " ] Puppet not found on #{vm}. Continuing with other checks"
@@ -284,7 +288,7 @@ def zenmonitor_user (user, vm, password, zen_password, verify_only)
       else
         clear_line
         puts '[ ' + 'ERROR'.red + " ] Failed to add zenmonitor user. Error was #{result[0]}"
-        return 'FAILED'
+        raise 'FAILED'
       end
       #set password
       set_pass_cmd = "echo #{zen_password} | passwd --stdin zenmonitor"
@@ -334,12 +338,12 @@ def sudo_installed(user, vm, password, os, verify_only)
             clear_line
             puts '[ ' + 'ERROR'.red + " ] Ran into below error when installing sudo on #{vm}"
             puts "#{result}"
-            return 'FALSE'
+            raise 'FALSE'
           end
         else
           clear_line
           puts '[ ' + 'ERROR'.red + " ] SUDO is not installed on #{vm}. This script only supports auto installs on CentOS."
-          return 'FALSE'
+          raise 'FALSE'
         end
       else
         clear_line
@@ -380,12 +384,12 @@ def sudo_config(user, vm, password, os, verify_only)
           clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to modify sudoers config. Below is the error messages"
           puts result
-          return 'FAILED'
+          raise 'FAILED'
         end
       else
         clear_line
         puts '[ ' + 'WARN'.yellow + " ] Sudoers config not correct on #{vm}. Not correcting as verify_only option set"
-        return 'FAILED'
+        raise 'FAILED'
       end
     end
   end
@@ -419,7 +423,7 @@ def zen_sudo_cfg(user, vm, password, os, verify_only, zen_md5sum, zen_sudo_cfg_s
       if verify_only == true
         clear_line
         puts '[ ' + 'WARN'.yellow + " ] Zenmonitor sudo config not correct on #{vm}. Not fixing as verify_only is set"
-        return 'FAILED'
+        raise 'FAILED'
       else
         clear_line
         #create folder
@@ -436,7 +440,7 @@ def zen_sudo_cfg(user, vm, password, os, verify_only, zen_md5sum, zen_sudo_cfg_s
             clear_line
             puts '[ ' + 'WARN'.yellow + " ] Failed to upload zen monitor config on #{vm}. See error below"
             puts e
-            return 'FAILED'
+            raise 'FAILED'
           end
         end
       end
@@ -473,7 +477,7 @@ def zenmonitor_user(user, vm, password, zen_password, verify_only)
       if add_zen_user == true
         clear_line
         puts '[ ' + 'WARN'.yellow + " ] Zenmonitor user does not exist on #{vm} and will need to be added. Not performing this action as verify_only is set to true"
-        return 'FAILED'
+        raise 'FAILED'
       else
         return 'SUCCESS'
       end
@@ -493,7 +497,7 @@ def zenmonitor_user(user, vm, password, zen_password, verify_only)
           clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to add user zenmonitor on #{vm}. Please see below error"
           puts result
-          return 'FAILED'
+          raise 'FAILED'
         end
       end
     end
@@ -526,7 +530,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
     if verify_only == true
       clear_line
       puts '[ ' + 'WARN'.yellow + " ] Zenmonitor authorized_keys needs to be updated on #{vm}. No action being taken as verify_only is true"
-      return 'FAILED'
+      raise 'FAILED'
     end
 
     if add_zen_ssh_key == true
@@ -539,7 +543,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
           clear_line
           puts '[ ' + 'ERROR'.red + " ] Unknown error occured when performing scp on zenmonitor ssh key. Please see below error"
           puts e
-          return 'FAILED'
+          raise 'FAILED'
         end
         modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys'
         result = ssh_exec!(ssh, modify_perms)
@@ -551,14 +555,120 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
           clear_line
           puts '[ ' + 'ERROR'.red + " ] Failed to modify permissions on authorized keys folder for #{vm}. Please see belos."
           puts result
-          return 'FAILED'
+          raise 'FAILED'
         end
       end
     end
   end
 end
 
+def connect_viserver(viserver, user, password)
+  begin
+    vim = RbVmomi::VIM.connect :host => viserver, :user => user, :password => password, :insecure => true
+    return vim
+  rescue => e
+    clear_line
+    puts '[ ' + 'ERROR'.red + " ] Failed to log into #{viserver}. Please see below message"
+    puts e.message
+    raise 'FAILED'
+  end
+end
 
+def list_vms(folder)
+  children = folder.children.find_all
+  children.each do |child|
+    if child.class == RbVmomi::VIM::VirtualMachine
+      if child.runtime.powerState == 'poweredOn'
+        @vms.push child
+        clear_line
+        print "[ " + "INFO".green + " ] #{child.name} added to inventory"
+      end
+    elsif child.class == RbVmomi::VIM::Folder
+      list_vms(child)
+    end
+  end
+end
+
+def vim_wait(vim, vm, auth, process)
+  pid = process[:pid]
+  while process[:exitCode].nil? do
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Waiting for process to end. Sleeping 5 seconds"
+    sleep(5)
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Checking on process again"
+    process = vim.serviceContent.guestOperationsManager.processManager.ListProcessesInGuest(:vm => vm, :auth => auth, :pids => [pid]).first
+  end
+
+  return process[:exitCode]
+end
+
+#verify if root user needs to be permitted to login via SSH
+def verify_root_ssh(vim, vm, auth)
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Checking to see if root_ssh is disabled"
+
+  #create spec to run command
+  spec = { :programPath => '/bin/grep', :arguments => '"^PermitRootLogin no" /etc/ssh/sshd_config' }
+
+  #run command through GuestOps
+  pid = vim.serviceContent.guestOperationsManager.processManager.StartProgramInGuest(:vm => vm, :auth => auth, :spec => spec)
+
+  #list process of command and get exit code
+  process = vim.serviceContent.guestOperationsManager.processManager.ListProcessesInGuest(:vm => vm, :auth => auth, :pids => [pid]).first
+
+  exit_code = vim_wait(vim, vm, auth, process)
+
+  return exit_code
+end
+
+#set PermitRootLogin to yes in sshd_config and restart sshd
+def config_root_ssh(vim, vm, auth, state)
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Configuring root ssh access. Setting to state #{state}."
+  if state == 'enabled'
+    programpath = '/bin/sed'
+    arguments = '-i \'s/\(^PermitRootLogin no\)/PermitRootLogin yes/g\' /etc/ssh/sshd_config'
+  elsif state == 'disabled'
+    programpath = '/bin/sed'
+    arguments = '-i \'s/\(^PermitRootLogin yes\)/PermitRootLogin no/g\' /etc/ssh/sshd_config'
+  else
+    clear_line
+    puts '[ ' + 'ERROR'.red + " ] Invalid state set for configure_root_ssh. State: #{state}"
+    raise 'ERROR'
+  end
+  spec = { :programPath => programpath, :arguments => arguments }
+
+  #run command through GuestOps
+  pid = vim.serviceContent.guestOperationsManager.processManager.StartProgramInGuest(:vm => vm, :auth => auth, :spec => spec)  
+
+  #list process of command and get exit code
+  process = vim.serviceContent.guestOperationsManager.processManager.ListProcessesInGuest(:vm => vm, :auth => auth, :pids => [pid]).first
+
+  exit_code = vim_wait(vim, vm, auth, process)
+
+  #restart sshd
+  print '[ ' + 'INFO'.green + " ] Restarting the sshd service"
+  spec = { :programPath => '/sbin/service', :arguments => 'sshd restart' }
+
+  #run command through GuestOps
+  pid = vim.serviceContent.guestOperationsManager.processManager.StartProgramInGuest(:vm => vm, :auth => auth, :spec => spec)  
+
+  #list process of command and get exit code
+  process = vim.serviceContent.guestOperationsManager.processManager.ListProcessesInGuest(:vm => vm, :auth => auth, :pids => [pid]).first
+
+  exit_code = vim_wait(vim, vm, auth, process)
+
+  if exit_code == 0
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Succesfully restart SSHD"
+    return 'SUCCESS'
+  else
+    clear_line
+    puts '[ ' + 'ERROR'.red + " ] Failed to succesfully restart sshd on #{vm}."
+    raise 'ERROR'
+  end
+end
 
 #variables
 sqluser = 'dbmonitor'
@@ -578,6 +688,8 @@ vm_user = opts[:user]
 vm_input_file = '/tools-export/scripts/Ruby/outputs/vmList'
 zen_sudo_cfg_source_file = '/home/nholloway/scripts/Ruby/files/25_zenmonitor'
 podlist = []
+#setting root_ssh_enable to false so script does not try to set it back to false
+root_ssh_enable = false
 
 #determine environment and correct ssh key
 case domain
@@ -624,7 +736,24 @@ else
   #remove any duplicates in podlist
   podlist.uniq!
 
-  podlist.each do |pod|
+  podlist.each do |pod| 
+
+    #connect to vCenter and get list of VM's if no_ssh is specified
+    if opts[:no_ssh]
+      vcenter = pod + opts[:vcenter] + '-mgmt-vc0'
+      
+      #connect to tlm and oss vcenters
+      vim = connect_viserver(tlm_vc, "AD\\#{runuser}", adPass)
+      next if vim.match('FAILED')
+
+      #get list of vms
+      dc = vim.serviceInstance.find_datacenter
+      @vms = []
+      list_vms(dc.vmFolder)
+      vim_vms = @vms.clone
+      @vms = []
+    end
+
     #get list of vm's for each pod
     pod_vm_list = vm_list.select { |x| x.match(/#{pod}/) }
 
@@ -632,48 +761,74 @@ else
       vmname = vm.split('.')[0]
       secret = opts[:user] + '@' + vmname
 
-      #verify if password is in secret server
-      ss_password = get_password(adPass, secret, domain)
-      next if ss_password.match('ERROR')
+      begin
+        #verify if password is in secret server
+        ss_password = get_password(adPass, secret, domain)
 
-      #verify password in secret server works on server
-      vm_con = verify_vm_password(vm_user, vmname, ss_password)
-      next if vm_con.match('FAILED')
+        #use GuestOps (console) if no_ssh is set
+        if opts[:no_ssh]
+          #build guest os creds
+          auth = RbVmomi::VIM::NamePasswordAuthentication ({
+            :interactiveSession => false,
+            :username => opts[:user],
+            :password => ss_password 
+          })
 
-      #verify if Ops Puppet server is installed 
-      puppet_configured = verify_puppet(vm_user, vmname, ss_password)
-      next if puppet_configured.match('true')
+          vim_vm = vim_vms.find { |x| x.name.match(/^#{vm}$/) }
+          verify_user_creds(vim, vim_vm, auth)
+          root_ssh_enabled = verify_root_ssh(vim, vim_vm, auth)
+          if root_ssh_enabled == 'DISABLED'
+            if opts[:verify_only]
+              clear_line
+              puts '[ ' + 'WARN'.yellow + " ] Root Login disabled. Not enabling as verify_only is set"
+              raise 'FAILED'
+            else
+              clear_line
+              print '[ ' + 'INFO'.green + " ] Root login disabled. Enabling now"
+              root_ssh_enable = config_root_ssh(vim, vim_vm, auth, 'enable')
+            end
+          end
+        end
 
-      #verify OS of VM
-      os = check_os(vm, vm_user, ss_password)
-      next if os.match('ERROR')
+        #verify password in secret server works on server
+        vm_con = verify_vm_password(vm_user, vmname, ss_password)
 
-      #verify sshd
-      sshd_config_result = sshd_config_chk(vm_user, vm, ss_password, os, opts[:verify_only])
-      next if sshd_config_result.match('FAILED')
+        #verify if Ops Puppet server is installed 
+        puppet_configured = verify_puppet(vm_user, vmname, ss_password)
 
-      #verify sudo is installed and install it if necessary
-      sudoers = sudo_installed(vm_user, vm, ss_password, os, opts[:verify_only])
-      next if sudoers.match('FALSE')
+        #verify OS of VM
+        os = check_os(vm, vm_user, ss_password)
 
-      #verify sudo config
-      sudo_cfg = sudo_config(vm_user, vm, ss_password, os, opts[:verify_only])
-      next if sudo_cfg.match('FAILED')
+        #verify sshd
+        sshd_config_result = sshd_config_chk(vm_user, vm, ss_password, os, opts[:verify_only])
 
-      #verify/add zenmonitor config
-      zen_cfg_result = zen_sudo_cfg(vm_user, vm, ss_password, os, opts[:verify_only], zen_sudo_md5sum, zen_sudo_cfg_source_file)
-      next if zen_cfg_result.match('FAILED')
+        #verify sudo is installed and install it if necessary
+        sudoers = sudo_installed(vm_user, vm, ss_password, os, opts[:verify_only])
 
-      #verify zenmonitor user/password/ssh keys
-      zen_user_result = zenmonitor_user(vm_user, vm, ss_password, zen_password, opts[:verify_only])
-      next if zen_user_result.match('FAILED')
+        #verify sudo config
+        sudo_cfg = sudo_config(vm_user, vm, ss_password, os, opts[:verify_only])
 
-      #connect to zenmonitor via ssh and verify/add authorized keys file
-      zen_ssh_key_result = zen_ssh_key('zenmonitor', vm, zen_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
-      next if zen_ssh_key_result.match('FAILED')
+        #verify/add zenmonitor config
+        zen_cfg_result = zen_sudo_cfg(vm_user, vm, ss_password, os, opts[:verify_only], zen_sudo_md5sum, zen_sudo_cfg_source_file)
 
-      clear_line
-      puts '[ ' + 'INFO'.green + " ] #{vm} is ready for zenoss"
+        #verify zenmonitor user/password/ssh keys
+        zen_user_result = zenmonitor_user(vm_user, vm, ss_password, zen_password, opts[:verify_only])
+
+        #connect to zenmonitor via ssh and verify/add authorized keys file
+        zen_ssh_key_result = zen_ssh_key('zenmonitor', vm, zen_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
+
+        clear_line
+        puts '[ ' + 'INFO'.green + " ] #{vm} is ready for zenoss"
+      rescue => e 
+        #no rescue code needed at this moment
+      ensure 
+        #ensure root ssh login is disabled if it was enabled
+        if root_ssh_enabled == 'SUCCESS'
+          clear_line
+          print '[ ' + 'INFO'.green + " ] Setting root ssh to disabled on #{vm}"
+          config_root_ssh(vim, vim_vm, auth, 'disabled')
+        end
+      end
     end
     clear_line  
   end
