@@ -33,6 +33,11 @@ if !opts[:vmregex].nil? && !opts[:vms].nil?
   exit
 end
 
+if !opts[:no_ssh_given].nil? && opts[:vcenter].nil?
+  puts '[ ' + 'ERROR'.red + " ] You must specify vcenter type when giving the no-ssh option"
+  exit
+end
+
 #functions 
 def ssh_exec!(ssh, command)
   stdout_data = ""
@@ -619,7 +624,11 @@ def verify_root_ssh(vim, vm, auth)
 
   exit_code = vim_wait(vim, vm, auth, process)
 
-  return exit_code
+  if exit_code == 0 
+    return 'DISABLED'
+  else
+    return 'ENABLED'
+  end
 end
 
 #set PermitRootLogin to yes in sshd_config and restart sshd
@@ -666,6 +675,22 @@ def config_root_ssh(vim, vm, auth, state)
   else
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Failed to succesfully restart sshd on #{vm}."
+    raise 'ERROR'
+  end
+end
+
+#validate guest os credentials
+def verify_user_creds(vim, vm, auth)
+  begin
+    #receives error if creds are wrong, otherwise returns nil
+    vim.serviceContent.guestOperationsManager.authManager.ValidateCredentialsInGuest(:vm => vm, :auth => auth)
+    clear_line
+    print '[ ' + 'INFO'.green + " ] Credentials are valid on #{vm.name}"
+    return 'SUCCESS'
+  rescue => e
+    clear_line
+    puts '[ ' + 'ERROR'.red + " ] Failed to validate credentials on #{vm.name}. Please see below error message."
+    puts e.message
     raise 'ERROR'
   end
 end
@@ -730,7 +755,7 @@ else
   #get list of pods
   vm_list.each do |vm|
     numbers = vm.scan(/\d+/)
-    podlist.push numbers[1]
+    podlist.push "d#{numbers[0]}p#{numbers[1]}"
   end
 
   #remove any duplicates in podlist
@@ -739,12 +764,17 @@ else
   podlist.each do |pod| 
 
     #connect to vCenter and get list of VM's if no_ssh is specified
-    if opts[:no_ssh]
+    if opts[:no_ssh_given]
       vcenter = pod + opts[:vcenter] + '-mgmt-vc0'
       
       #connect to tlm and oss vcenters
-      vim = connect_viserver(tlm_vc, "AD\\#{runuser}", adPass)
-      next if vim.match('FAILED')
+      begin
+        vim = connect_viserver(vcenter, "AD\\#{runuser}", adPass)
+        vi_connect = 'SUCCESS'
+      rescue
+        vi_connect = 'FAILED'
+      end
+      next if vi_connect.match('FAILED')
 
       #get list of vms
       dc = vim.serviceInstance.find_datacenter
@@ -766,7 +796,7 @@ else
         ss_password = get_password(adPass, secret, domain)
 
         #use GuestOps (console) if no_ssh is set
-        if opts[:no_ssh]
+        if opts[:no_ssh_given]
           #build guest os creds
           auth = RbVmomi::VIM::NamePasswordAuthentication ({
             :interactiveSession => false,
@@ -775,6 +805,11 @@ else
           })
 
           vim_vm = vim_vms.find { |x| x.name.match(/^#{vm}$/) }
+          if vim_vm.nil?
+            clear_line
+            puts '[ ' + 'ERROR'.red + " ] Did not find a vm matching #{vm} in #{vcenter}"
+          end
+          next if vim_vm.nil?
           verify_user_creds(vim, vim_vm, auth)
           root_ssh_enabled = verify_root_ssh(vim, vim_vm, auth)
           if root_ssh_enabled == 'DISABLED'
@@ -785,7 +820,7 @@ else
             else
               clear_line
               print '[ ' + 'INFO'.green + " ] Root login disabled. Enabling now"
-              root_ssh_enable = config_root_ssh(vim, vim_vm, auth, 'enable')
+              root_ssh_enable = config_root_ssh(vim, vim_vm, auth, 'enabled')
             end
           end
         end
@@ -823,7 +858,7 @@ else
         #no rescue code needed at this moment
       ensure 
         #ensure root ssh login is disabled if it was enabled
-        if root_ssh_enabled == 'SUCCESS'
+        if root_ssh_enable == 'SUCCESS'
           clear_line
           print '[ ' + 'INFO'.green + " ] Setting root ssh to disabled on #{vm}"
           config_root_ssh(vim, vim_vm, auth, 'disabled')
@@ -831,8 +866,10 @@ else
       end
     end
     clear_line  
+    puts '[ ' + 'INFO'.green + " ] Completed all VM's in #{pod}"
   end
 end
+
 
 
 
