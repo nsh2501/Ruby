@@ -566,7 +566,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
       end
     end
   end
-endc
+end
 
 def vim_wait(vim, vm, auth, process)
   pid = process[:pid]
@@ -698,7 +698,6 @@ else
   exit
 end
 
-
 #if vmregex option get list of servers from py_collector otherwise get list of servers that were put in on the command line
 if opts[:vmregex].nil?
   vm_list = opts[:vms]
@@ -818,7 +817,8 @@ else
         if root_ssh_enable == 'SUCCESS'
           clear_line
           print '[ ' + 'INFO'.green + " ] Setting root ssh to disabled on #{vm}"
-          config_root_ssh(vim, vim_vm, auth, 'disabled')
+          config_root_ssh(vim, vim_vm.obj, auth, 'disabled')
+          root_ssh_enable = false
         end
       end
     end
