@@ -10,8 +10,9 @@ require 'highline/import'
 require 'net/scp'
 require 'rbvmomi'
 
-require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 
 #options
 opts = Trollop::options do 
@@ -565,34 +566,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
       end
     end
   end
-end
-
-def connect_viserver(viserver, user, password)
-  begin
-    vim = RbVmomi::VIM.connect :host => viserver, :user => user, :password => password, :insecure => true
-    return vim
-  rescue => e
-    clear_line
-    puts '[ ' + 'ERROR'.red + " ] Failed to log into #{viserver}. Please see below message"
-    puts e.message
-    raise 'FAILED'
-  end
-end
-
-def list_vms(folder)
-  children = folder.children.find_all
-  children.each do |child|
-    if child.class == RbVmomi::VIM::VirtualMachine
-      if child.runtime.powerState == 'poweredOn'
-        @vms.push child
-        clear_line
-        print "[ " + "INFO".green + " ] #{child.name} added to inventory"
-      end
-    elsif child.class == RbVmomi::VIM::Folder
-      list_vms(child)
-    end
-  end
-end
+endc
 
 def vim_wait(vim, vm, auth, process)
   pid = process[:pid]
@@ -679,21 +653,6 @@ def config_root_ssh(vim, vm, auth, state)
   end
 end
 
-#validate guest os credentials
-def verify_user_creds(vim, vm, auth)
-  begin
-    #receives error if creds are wrong, otherwise returns nil
-    vim.serviceContent.guestOperationsManager.authManager.ValidateCredentialsInGuest(:vm => vm, :auth => auth)
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Credentials are valid on #{vm.name}"
-    return 'SUCCESS'
-  rescue => e
-    clear_line
-    puts '[ ' + 'ERROR'.red + " ] Failed to validate credentials on #{vm.name}. Please see below error message."
-    puts e.message
-    raise 'ERROR'
-  end
-end
 
 #variables
 sqluser = 'dbmonitor'
@@ -778,10 +737,8 @@ else
 
       #get list of vms
       dc = vim.serviceInstance.find_datacenter
-      @vms = []
-      list_vms(dc.vmFolder)
-      vim_vms = @vms.clone
-      @vms = []
+      vim_inv = get_inv_info(vim, dc, nil, nil)
+      vim_vms = vim_inv.select { |inv| inv.obj.is_a?(RbVmomi::VIM::VirtualMachine) }
     end
 
     #get list of vm's for each pod
@@ -804,14 +761,14 @@ else
             :password => ss_password 
           })
 
-          vim_vm = vim_vms.find { |x| x.name.match(/^#{vm}$/) }
+          vim_vm = vim_vms.find { |x| x.propSet[0].val.match(/^#{vm}$/) }
           if vim_vm.nil?
             clear_line
             puts '[ ' + 'ERROR'.red + " ] Did not find a vm matching #{vm} in #{vcenter}"
           end
           next if vim_vm.nil?
-          verify_user_creds(vim, vim_vm, auth)
-          root_ssh_enabled = verify_root_ssh(vim, vim_vm, auth)
+          verify_user_creds(vim, vim_vm.obj, auth)
+          root_ssh_enabled = verify_root_ssh(vim, vim_vm.obj, auth)
           if root_ssh_enabled == 'DISABLED'
             if opts[:verify_only]
               clear_line
@@ -820,7 +777,7 @@ else
             else
               clear_line
               print '[ ' + 'INFO'.green + " ] Root login disabled. Enabling now"
-              root_ssh_enable = config_root_ssh(vim, vim_vm, auth, 'enabled')
+              root_ssh_enable = config_root_ssh(vim, vim_vm.obj, auth, 'enabled')
             end
           end
         end
