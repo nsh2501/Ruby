@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+
 require 'vmware_secret_server'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
