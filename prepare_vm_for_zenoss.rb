@@ -134,8 +134,6 @@ def verifyAD_Pass(vm, user, pass)
         pass = ask("Please enter your AD Password") { |q| q.echo="*"}
     end
   end
-
-
   return pass
 end
 

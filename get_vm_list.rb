@@ -3,6 +3,9 @@
 #this script will get a list of all VM's in prod from TLM/OSS
 
 require 'trollop'
+require 'json'
+require 'highline/import'
+require 'net/ssh'
 
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/get_password.rb'
@@ -20,13 +23,51 @@ end
 Trollop::die "You must specify ether --vcenters or --vcenter_type not both." if (!opts[:vcenters].nil?) && (!opts[:vcenter_type].nil?)
 Trollop::die "Valid options are tlm, oss, or mgmt" unless (opts[:vcenter_type] =~ (/^tlm|mgmt|oss$/)) || opts[:vcenter_type].nil?
 
+#methods
+def get_adPass
+  if File.file?("#{ENV['HOME']}/.secretserver/ss_creds")
+    jPass = `base64 -d ~/.secretserver/ss_creds`
+    pArray = JSON.parse(jPass)
+    ad_pass_ask = pArray['AD PASSWORD']
+  else
+    ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
+  end
+  localVM = ENV['HOSTNAME']
+  runuser = `whoami`.chomp
+  adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
+end
+
+def verifyAD_Pass(vm, user, pass)
+  access = 'false'
+  clear_line
+  print '[ ' + 'INFO'.green + " ] Verifying AD Password"
+  while access == 'false'
+    begin
+      session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
+      access = 'true'
+      clear_line
+      print '[ ' + 'INFO'.green + " ] AD Authentication successful"
+      session.close
+    rescue Net::SSH::AuthenticationFailed 
+        clear_line
+        puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password provided."
+        pass = ask("Please enter your AD Password") { |q| q.echo="*"}
+    end
+  end
+  return pass
+end
+
 #variables
-@ad_user = 'AD\cap-p1osswinjump'
-@ad_pass = 'e$1*n3$Q4'
+@ad_user = 'AD\\' + `whoami`.chomp
+@ad_pass = get_adPass
 @vim_inv = []
 domain = ENV['HOSTNAME'].split('.')[1]
 num_workers = 5
 queue = Queue.new
+
+#get pasword
+
+
 
 #get vcenter list
 if opts[:vcenter_type].nil?
