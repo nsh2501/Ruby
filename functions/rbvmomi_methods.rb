@@ -139,7 +139,6 @@ def get_vmhosts(vim, dc, host_prop=nil)
                 RbVmomi::VIM.SelectionSpec(:name => 'tsFolder'),
                 RbVmomi::VIM.SelectionSpec(:name => 'tsDatacenterHostFolder'),
                 RbVmomi::VIM.SelectionSpec(:name => 'tsClusterHost'),
-                RbVmomi::VIM.SelectionSpec(:name => 'tsVapp'),
               ]
             ),
             RbVmomi::VIM.TraversalSpec(
@@ -254,10 +253,10 @@ enddef get_inv_info(vim, dc, host_prop=nil, vm_prop=nil)
           { :type => 'ClusterComputeResource', 
             :pathSet => %w(name parent summary.effectiveCpu summary.effectiveMemory) 
           },
-          { :type => 'ResourcePool', :pathSet => ['name', 'parent'] },
-          { :type => 'VirtualApp', :pathSet => ['name', 'parent', 'vm']},
+          #{ :type => 'ResourcePool', :pathSet => ['name', 'parent'] },
+          #{ :type => 'VirtualApp', :pathSet => ['name', 'parent', 'vm']},
           { :type => 'HostSystem', :pathSet => host_prop },
-          { :type => 'VirtualMachine', :pathSet => vm_prop },
+          #{ :type => 'VirtualMachine', :pathSet => vm_prop },
         ]
       )
 
