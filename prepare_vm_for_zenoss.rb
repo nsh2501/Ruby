@@ -362,7 +362,7 @@ def sudo_config(user, vm, password, os, verify_only)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
     clear_line
     print '[ ' + 'INFO'.green + " ] Verifying sudoers config on #{vm}"
-    if user == 'roo'
+    if user == 'root'
       sudoers_cmd = 'grep -q ^#includedir /etc/sudoers.d' + ' /etc/sudoers'
       add_sudoers_cmd = 'echo \'#includedir /etc/sudoers.d\' | tee -a /etc/sudoers'
 

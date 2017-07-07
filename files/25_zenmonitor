@@ -1,4 +1,5 @@
 User_Alias ZENOSS = zenmonitor
 Cmnd_Alias ZENOSS_LVM_CMDS = /sbin/pvs, /sbin/vgs, /sbin/lvs, /usr/sbin/pvs, /usr/sbin/vgs, /usr/sbin/lvs
 Cmnd_Alias ZENOSS_SVC_CMDS = /bin/systemctl list-units *, /bin/systemctl status *, /sbin/initctl list, /sbin/service --status-all, /usr/sbin/dmidecode
+Defaults:zenmonitor !requiretty
 ZENOSS ALL = (root) NOPASSWD: ZENOSS_LVM_CMDS, ZENOSS_SVC_CMDS
