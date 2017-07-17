@@ -48,7 +48,9 @@ def f_get_cust_vcenters(vcenter, ad_user, ad_pass)
   vim = connect_viserver(vcenter, ad_user, ad_pass)
   dc = vim.serviceInstance.find_datacenter
   result = get_vm(vim,dc)
-  vms = result.map { |x| x.propSet.find { |prop| prop.name == 'name' }.val }
+  powered_on = result.select { |x| x.propSet.find { |prop| prop.name == 'runtime.powerState' }.val == 'poweredOn' }
+  vcenters = powered_on.select { |x| x.propSet.find { |prop| prop.name == 'name' }.val =~ (/vc0/) }
+  vm_names = vcenters.map { |x| x.propSet.find { |prop| prop.name == 'name' }.val }
   vim.close unless vim.nil?
-  return vms
+  return vm_names
 end
