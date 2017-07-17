@@ -2,10 +2,11 @@
 
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/podlist.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 
 #functions
 
-def f_get_vcenter_list (domain, type)
+def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
   #get pod list based off of domain
   pod_list = f_pod_list(domain)
   vcenters = []
@@ -25,9 +26,28 @@ def f_get_vcenter_list (domain, type)
       vcenters.push "#{pod}tlm-mgmt-vc0"
       vcenters.push "#{pod}oss-mgmt-vc0"
     end
+  when 'vpc'
+    pod_list.each do |pod|
+      vcenters.push "#{pod}tlm-mgmt-vc0"
+      vcenters.push "#{pod}oss-mgmt-vc0"
+    end
+    cust_vms = []
+    vcenters.each do |vcenter|
+      vms = f_get_cust_vcenters(vcenter)
+      cust_vms.push(*vms)
+    end
   else
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Only valid options for f_get_vcenter_list are: tlm, oss, and mgmt"
   end
   return vcenters unless vcenters.nil?
+end
+
+def f_get_cust_vcenters(vcenter, ad_user, ad_pass)
+  vim = connect_viserver(vcenter, ad_user, ad_pass)
+  dc = vim.serviceInstance.find_datacenter
+  result = get_vm(vim,dc)
+  vms = result.map { |x| x.propSet.find { |prop| prop.name == 'name' }.val }
+  vim.close unless vim.nil?
+  return vms
 end
