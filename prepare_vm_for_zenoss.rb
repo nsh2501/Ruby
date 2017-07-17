@@ -616,7 +616,7 @@ numbers = localVM.scan(/\d+/)
 ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
 adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
 zen_sudo_md5sum = '8f76df75ff79d3a278ea1289f65dc60c'
-zen_password = 'pae4daiv3zahW'
+zen_password = 'pae4daiv3zahW$!'
 vm_user = opts[:user]
 vm_input_file = '/tools-export/scripts/Ruby/outputs/vmList'
 zen_sudo_cfg_source_file = '/home/nholloway/scripts/Ruby/files/25_zenmonitor'
