@@ -500,7 +500,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
           puts e
           raise 'FAILED'
         end
-        modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys; chown -R zenmonitor: /home/zenmonitor/*'
+        modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys; chown -R zenmonitor: /home/zenmonitor/'
         result = ssh_exec!(ssh, modify_perms)
         if result[2] == 0
           clear_line
