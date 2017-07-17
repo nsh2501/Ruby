@@ -43,7 +43,7 @@ def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
       end
     end
 
-    vcenters.each do { |vcenter| queue << vcenter }
+    vcenters.each { |vcenter| queue << vcenter }
     num_workers.times { queue << :END }
     threads.each(&:join)
 
