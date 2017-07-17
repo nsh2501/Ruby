@@ -31,12 +31,21 @@ def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
       vcenters.push "#{pod}tlm-mgmt-vc0"
       vcenters.push "#{pod}oss-mgmt-vc0"
     end
-    cust_vms = []
-    vcenters.each do |vcenter|
-      vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
-      cust_vms.push(*vms)
+    @cust_vms = []
+    num_workers = 5
+    queue = Queue.new
+    threads = num_workers.times.map do
+      Thread.new do
+        vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
+        @cust_vms.push(*vms)
+      end
     end
-    vcenters = cust_vms
+
+    vcenters.each do { |vcenter| queue << vcenter }
+    num_workers.times { queue << :END }
+    threads.each(&:join)
+
+    vcenters = @cust_vms
   else
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Only valid options for f_get_vcenter_list are: tlm, oss, and mgmt"
