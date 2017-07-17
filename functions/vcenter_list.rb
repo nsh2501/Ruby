@@ -33,7 +33,7 @@ def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
     end
     cust_vms = []
     vcenters.each do |vcenter|
-      vms = f_get_cust_vcenters(vcenter)
+      vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
       cust_vms.push(*vms)
     end
     vcenters = cust_vms
