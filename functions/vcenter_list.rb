@@ -36,8 +36,10 @@ def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
     queue = Queue.new
     threads = num_workers.times.map do
       Thread.new do
-        vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
-        @cust_vms.push(*vms)
+        until (vcenter = queue.pop) == :END
+          vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
+          @cust_vms.push(*vms)
+        end
       end
     end
 
