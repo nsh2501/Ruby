@@ -36,6 +36,7 @@ def f_get_vcenter_list (domain, type, ad_user=nil, ad_pass=nil)
       vms = f_get_cust_vcenters(vcenter)
       cust_vms.push(*vms)
     end
+    vcenters = cust_vms
   else
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Only valid options for f_get_vcenter_list are: tlm, oss, and mgmt"
