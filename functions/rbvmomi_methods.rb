@@ -124,7 +124,7 @@ end
 
 
 def get_vmhosts(vim, dc, host_prop=nil)
-  host_prop = %w(name parent runtime.connectionState config.option) unless !host_prop.nil?
+  host_prop = %w(name parent runtime.connectionState) if host_prop.nil?
 
   filterSpec = RbVmomi::VIM.PropertyFilterSpec(
         :objectSet => [
@@ -250,4 +250,10 @@ def get_vm(vim, dc, vm_prop=nil)
 
 
   result = vim.serviceContent.propertyCollector.RetrieveProperties(:specSet => [filterSpec])
+end
+
+def get_connected_hosts(vim, dc, host_prop=nil)
+  vmhosts = get_vmhosts(vim, dc, host_prop)
+  connected_hosts = vmhosts.select { |vmhost| vmhost.propSet.find { |prop| prop.name == 'runtime.connectionState'}.val == 'connected' }
+  return connected_hosts
 end

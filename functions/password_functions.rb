@@ -2,8 +2,11 @@
 #pasword functions
 
 require 'vmware_secret_server'
-require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 require 'highline/import'
+require 'json'
+require 'net/ssh'
+
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 def get_password(adpass, secret, domain)
   case domain

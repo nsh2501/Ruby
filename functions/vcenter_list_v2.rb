@@ -5,14 +5,13 @@ require_relative '/home/nholloway/scripts/Ruby/functions/podlist.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 
 #functions
-type, ad_user=nil, ad_pass=nil, pods=nil
-def f_get_vcenter_list (**hash_args)
+def f_get_vcenter_list(logger, **hash_args)
   #get domain
   domain = ENV['HOSTNAME'].split('.')[1]
 
   #set default's if options are not specified
   if hash_args[:pod].nil?
-    pod_list = f_pod_list(hash_args[:domain])
+    pod_list = f_pod_list(domain)
   else
     pod_list = hash_args[:pod]
   end
@@ -21,25 +20,39 @@ def f_get_vcenter_list (**hash_args)
     hash_args[:type] = 'all'
   end
 
+  logger.debug "DEBUG - Arguments passed into f_get_vcenter_list: #{hash_args}"
+
   #get pod list based off of domain
   vcenters = []
 
   #case statement to determine list of VM's based off of type
-  case type
+  case hash_args[:type]
   when 'tlm'
+    clear_line
+    logger.info "INFO - Gettin list of TLM vCenters."
+    print '[ ' + 'INFO'.white + " ] Getting list of TLM vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}tlm-mgmt-vc0"
     end
   when 'oss'
+    clear_line
+    logger.info "INFO - Gettin list of OSS vCenters."
+    print '[ ' + 'INFO'.white + " ] Getting list of OSS vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}oss-mgmt-vc0"
     end
   when 'mgmt'
+    clear_line
+    logger.info "INFO - Gettin list of MGMT vCenters."
+    print '[ ' + 'INFO'.white + " ] Getting list of MGMT vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}tlm-mgmt-vc0"
       vcenters.push "#{pod}oss-mgmt-vc0"
     end
   when 'vpc'
+    clear_line
+    logger.info "INFO - Gettin list of customer vCenters."
+    print '[ ' + 'INFO'.white + " ] Getting list of customer vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}tlm-mgmt-vc0"
       vcenters.push "#{pod}oss-mgmt-vc0"
@@ -50,7 +63,7 @@ def f_get_vcenter_list (**hash_args)
     threads = num_workers.times.map do
       Thread.new do
         until (vcenter = queue.pop) == :END
-          vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
+          vms = f_get_cust_vcenters(vcenter, hash_args[:ad_user], hash_args[:ad_pass])
           @cust_vms.push(*vms)
         end
       end
@@ -62,6 +75,9 @@ def f_get_vcenter_list (**hash_args)
 
     vcenters = @cust_vms
   when 'all'
+    clear_line
+    logger.info "INFO - Gettin list of all vCenters."
+    print '[ ' + 'INFO'.white + " ] Getting list of all vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}tlm-mgmt-vc0"
       vcenters.push "#{pod}oss-mgmt-vc0"
@@ -72,7 +88,7 @@ def f_get_vcenter_list (**hash_args)
     threads = num_workers.times.map do
       Thread.new do
         until (vcenter = queue.pop) == :END
-          vms = f_get_cust_vcenters(vcenter, ad_user, ad_pass)
+          vms = f_get_cust_vcenters(vcenter, hash_args[:ad_user], hash_args[:ad_pass])
           @cust_vms.push(*vms)
         end
       end
@@ -88,6 +104,10 @@ def f_get_vcenter_list (**hash_args)
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Only valid options for f_get_vcenter_list are: tlm, oss, and mgmt"
   end
+  clear_line
+  logger.info "INFO - Completed getting list of vCenters"
+  print '[ ' + 'INFO'.white + " ] Completed getting list of vCenters"
+  logger.debug "DEBUG - Full list of vCenters. #{vcenters}"
   return vcenters unless vcenters.nil?
 end
 
