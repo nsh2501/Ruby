@@ -282,8 +282,46 @@ result = pc.RetrieveProperties(:specSet => [filterSpec])
 
 end
 
+def get_resource_pool(vim, rsp_prop=nil)
+  rsp_prop = %w(name) if rsp_prop.nil?
+
+  pc = vim.serviceInstance.content.propertyCollector                                                                                                                               
+  viewmgr = vim.serviceInstance.content.viewManager
+  rootFolder = vim.serviceInstance.content.rootFolder
+  vmview = viewmgr.CreateContainerView({:container => rootFolder,                                                                                                                                  
+                                        :type => ['ResourcePool'],                                                                                                                                            
+                                        :recursive => true})
+  filterSpec = RbVmomi::VIM.PropertyFilterSpec(                                                                                                                                                    
+                :objectSet => [                                                                                                                                                                              
+                :obj => vmview,                                                                                                                                                                          
+                :skip => true,                                                                                                                                                                           
+                :selectSet => [                                                                                                                                                                          
+                    RbVmomi::VIM.TraversalSpec(                                                                                                                                                          
+                        :name => "traverseEntities",                                                                                                                                                     
+                        :type => "ContainerView",                                                                                                                                                        
+                        :path => "view",                                                                                                                                                                 
+                        :skip => false                                                                                                                                                                   
+                    )]                                                                                                                                                                                   
+            ],                                                                                                                                                                                           
+            :propSet => [                                                                                                                                                                                
+                { :type => 'ResourcePool', :pathSet => rsp_prop}                                                                                                                                                     
+            ]                                                                                                                                                                                            
+        )                                                                                                                                                                                                
+result = pc.RetrieveProperties(:specSet => [filterSpec])
+
+end
+
 def get_connected_hosts(vim, dc, host_prop=nil)
   vmhosts = get_vmhosts(vim, dc, host_prop)
   connected_hosts = vmhosts.select { |vmhost| vmhost.propSet.find { |prop| prop.name == 'runtime.connectionState'}.val == 'connected' }
   return connected_hosts
 end
+
+
+
+
+
+
+
+
+
