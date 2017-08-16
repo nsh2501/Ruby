@@ -252,6 +252,36 @@ def get_vm(vim, dc, vm_prop=nil)
   result = vim.serviceContent.propertyCollector.RetrieveProperties(:specSet => [filterSpec])
 end
 
+def get_vm_2(vim, vm_prop=nil)
+  vm_prop = %w(name runtime.powerState summary.guest.toolsStatus) if vm_prop.nil?
+
+  pc = vim.serviceInstance.content.propertyCollector                                                                                                                               
+  viewmgr = vim.serviceInstance.content.viewManager
+  rootFolder = vim.serviceInstance.content.rootFolder
+  vmview = viewmgr.CreateContainerView({:container => rootFolder,                                                                                                                                  
+                                        :type => ['VirtualMachine'],                                                                                                                                            
+                                        :recursive => true})
+  filterSpec = RbVmomi::VIM.PropertyFilterSpec(                                                                                                                                                    
+                :objectSet => [                                                                                                                                                                              
+                :obj => vmview,                                                                                                                                                                          
+                :skip => true,                                                                                                                                                                           
+                :selectSet => [                                                                                                                                                                          
+                    RbVmomi::VIM.TraversalSpec(                                                                                                                                                          
+                        :name => "traverseEntities",                                                                                                                                                     
+                        :type => "ContainerView",                                                                                                                                                        
+                        :path => "view",                                                                                                                                                                 
+                        :skip => false                                                                                                                                                                   
+                    )]                                                                                                                                                                                   
+            ],                                                                                                                                                                                           
+            :propSet => [                                                                                                                                                                                
+                { :type => 'VirtualMachine', :pathSet => vm_prop}                                                                                                                                                     
+            ]                                                                                                                                                                                            
+        )                                                                                                                                                                                                
+result = pc.RetrieveProperties(:specSet => [filterSpec]) 
+
+
+end
+
 def get_connected_hosts(vim, dc, host_prop=nil)
   vmhosts = get_vmhosts(vim, dc, host_prop)
   connected_hosts = vmhosts.select { |vmhost| vmhost.propSet.find { |prop| prop.name == 'runtime.connectionState'}.val == 'connected' }
