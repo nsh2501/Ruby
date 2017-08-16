@@ -9,8 +9,8 @@ require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/vcenter_list_v2.rb'
 
 opts = Trollop::options do
-  opt :vcenters "List of vCenters to run the audit on", :type => :strings, :required => true
-  opt :file_location "Location you would like the csv file", :type => :string, :required => false, :default => 'ENV[\'HOME\']'
+  opt :vcenters, "List of vCenters to run the audit on", :type => :strings, :required => true
+  opt :file_location, "Location you would like the csv file", :type => :string, :required => false, :default => 'ENV[\'HOME\']'
 end
 
 #methods
