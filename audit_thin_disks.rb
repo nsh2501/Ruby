@@ -8,7 +8,7 @@ require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/vcenter_list_v2.rb'
 
-opts == Trollop::options do
+opts = Trollop::options do
   opt :vcenters "List of vCenters to run the audit on", :type => :strings, :required => true
   opt :file_location "Location you would like the csv file", :type => :string, :required => false, :default => 'ENV[\'HOME\']'
 end
@@ -29,7 +29,7 @@ end
 ad_user = 'AD\\' + `whoami`.chomp
 ad_pass = get_adPass
 vm_prop = ["name", "layoutEx", "config.hardware.device", "resourcePool"]
-report = @[]
+report = []
 
 opts[:vcenters].each do |vcenter|
   #variables
