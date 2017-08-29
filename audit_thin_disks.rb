@@ -2,6 +2,7 @@
 #runs a audit on all vcenters listed and will report on any thin disks and space needed if these disks are inflated
 
 require 'trollop'
+require 'csv'
 
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
@@ -30,6 +31,8 @@ ad_user = 'AD\\' + `whoami`.chomp
 ad_pass = get_adPass
 vm_prop = ["name", "layoutEx", "config.hardware.device", "resourcePool"]
 report = []
+
+opts[:vcenters].uniq!
 
 opts[:vcenters].each do |vcenter|
   #variables
@@ -93,24 +96,27 @@ opts[:vcenters].each do |vcenter|
         vm_hash['name'] = vm_name
         vm_hash['Thin Disk Size Total'] = total_drive_vm
         vm_hash['Thin Disk Size Used'] = total_used_vm
-        vm_hash['Needed Space'] = total_drive_vm - total_used_vm
+        vm_hash['Needed Space in GB'] = total_drive_vm - total_used_vm
         report.push(vm_hash)
 
         total_drive_vc += total_drive_vm
         total_used_vc += total_used_vm
       end
     }
+  
   vc_hash = {}
   vc_hash['vcenter'] = vcenter
   vc_hash['name'] = 'Total Numbers'
   vc_hash['Thin Disk Size Total'] = total_drive_vc
   vc_hash['Thin Disk Size Used'] = total_used_vc
-  vc_hash['Needed Space'] = total_drive_vc - total_used_vc
+  vc_hash['Needed Space in GB'] = total_drive_vc - total_used_vc
   report.push(vc_hash)
+
+  vim.close
 end
 
 
-column_names = report.first.key
+column_names = report.first.keys
 s = CSV.generate do |csv|
   csv << column_names
   report.each do |x|
@@ -118,7 +124,8 @@ s = CSV.generate do |csv|
   end
 end
 
-csv_file = opts[:file_location] + '/thin_disks.csv'
+time = `date +%Y%m%d-%k%M`.chomp
+csv_file = opts[:file_location] + 'thin_disks_' + time + '.csv'
 
 File.write(csv_file, s)
 
