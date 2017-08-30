@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+#test
 #runs a audit on all vcenters listed and will report on any thin disks and space needed if these disks are inflated
 
 require 'trollop'
