@@ -260,55 +260,6 @@ def verify_puppet(user, vm, password)
   end
 end
 
-def zenmonitor_user (user, vm, password, zen_password, verify_only)
-  add_user = false
-  Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
-    #verify if zenmonitor user exists and create it if necessary
-    clear_line
-    print '[ ' + 'INFO'.green + " ] Verifying if the user zenmonitor exists."
-    verify_zenmonitor = 'grep -q -i zenmonitor /etc/passwd'
-    if user != 'root'
-      verify_zenmonitor = 'sudo ' + verify_zenmonitor
-    end
-    result_cmd = ssh_exec!(ssh, verify_zenmonitor)
-    if result_cmd[2] == 0
-      clear_line
-      print '[ ' + 'INFO'.green + " ] zenmonitor user exists on server"
-    else
-      clear_line
-      print '[ ' + 'INFO'.green + " ] zenmonitor needs to be added on server"
-      add_user = true
-    end
-
-    if verify_only == false && add_user == true
-      clear_line
-      print '[ ' + 'INFO'.green + " ] Adding zenmonitor user"
-      #add user
-      add_zenmonitor_cmd = 'adduser zenmonitor'
-      result = ssh_exec!(ssh, add_zenmonitor_cmd)
-      if result[2] == 0
-        clear_line
-        print '[ ' + 'INFO'.green + " ] Zenmonitor user successfully added."
-      else
-        clear_line
-        puts '[ ' + 'ERROR'.red + " ] Failed to add zenmonitor user. Error was #{result[0]}"
-        raise 'FAILED'
-      end
-      #set password
-      set_pass_cmd = "echo #{zen_password} | passwd --stdin zenmonitor"
-      result = ssh_exec!(ssh, set_pass_cmd)
-      if result[2] == 0
-        clear_line
-        print '[ ' + 'INFO'.green + " ] Successfully set password for zenmonitor"
-      else
-        clear_line
-        puts '[ ' + 'WARN'.yellow + " ] Failed to set password on #{vm} for user zenmonitor but will continue"
-      end
-    end
-  end
-  return 'SUCCESS'
-end
-
 def sudo_installed(user, vm, password, os, verify_only)
   Net::SSH.start(vm, user, :password => password, :auth_methods => ['password'], :number_of_password_prompts => 0) do |ssh|
     clear_line
@@ -549,7 +500,7 @@ def zen_ssh_key(user, vm, password, zen_pub_key, zen_pub_key_md5sum, verify_only
           puts e
           raise 'FAILED'
         end
-        modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys'
+        modify_perms = 'chmod 600 /home/zenmonitor/.ssh/authorized_keys; chown -R zenmonitor: /home/zenmonitor/'
         result = ssh_exec!(ssh, modify_perms)
         if result[2] == 0
           clear_line
@@ -665,7 +616,7 @@ numbers = localVM.scan(/\d+/)
 ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
 adPass = verifyAD_Pass(localVM, runuser, ad_pass_ask)
 zen_sudo_md5sum = '8f76df75ff79d3a278ea1289f65dc60c'
-zen_password = 'pae4daiv3zahW'
+zen_password = 'pae4daiv3zahW$!'
 vm_user = opts[:user]
 vm_input_file = '/tools-export/scripts/Ruby/outputs/vmList'
 zen_sudo_cfg_source_file = '/home/nholloway/scripts/Ruby/files/25_zenmonitor'
@@ -804,7 +755,7 @@ else
         zen_user_result = zenmonitor_user(vm_user, vm, ss_password, zen_password, opts[:verify_only])
 
         #connect to zenmonitor via ssh and verify/add authorized keys file
-        zen_ssh_key_result = zen_ssh_key('zenmonitor', vm, zen_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
+        zen_ssh_key_result = zen_ssh_key(vm_user, vm, ss_password, zen_pub_key, zen_pub_key_md5sum, opts[:verify_only])
 
         clear_line
         puts '[ ' + 'INFO'.green + " ] #{vm} is ready for zenoss"

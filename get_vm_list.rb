@@ -85,7 +85,7 @@ threads = num_workers.times.map do
     print '[ ' + 'INFO'.green + " ] Collecting VM's from #{vcenter}"
      vim = connect_viserver(vcenter, @ad_user, @ad_pass)
      dc = vim.serviceInstance.find_datacenter
-     vim_inv = get_inv_info(vim, dc, nil, nil)
+     vim_inv = get_vm(vim, dc)
      @vim_inv.push(*vim_inv)
      vim.close
      clear_line
