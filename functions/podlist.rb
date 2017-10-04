@@ -22,8 +22,7 @@ def f_pod_list (domain)
       'd10p15',
       'd11p16',
       'd3p17',
-      'd12p21',
-      'd0p23'
+      'd12p21'
     ]
   when 'stage'
     podList = [
