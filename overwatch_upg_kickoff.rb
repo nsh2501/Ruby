@@ -23,23 +23,28 @@ opts = Trollop::options do
   #Optional paremeters
   opt :esx_password, "ESXi Password", :type => :string, :required => false, :default => 'zombieownsall'
   opt :hyperic_password, "ESXi Password", :type => :string, :required => false, :default => 'm0n3yb0vin3'
-  opt :target_vcd_version, "vCloud-Director Version", :type => :string, :required => false
-  opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false
+  opt :target_vcd_version, "vCloud-Director Version", :type => :string, :required => false, :default => "8.10.1"
+  opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false, :default => "5225348"
   opt :zor_log_level, "Log level for the zor command", :type => :string, :required => false, :default => 'debug'
   opt :engine_api, "Zombie engine api location, i.e d0p1tlm-zmb-eng-fe-a:8080", :type => :string, :default => 'http://d0p1tlm-zmb-eng-fe-a:8080'
-  opt :zedVersion, "Action Set Version", :type => :string, :default => '1.4.17'
+  opt :zedVersion, "Action Set Version", :type => :string, :required => true
   opt :certificate_warning_days, "How many days to check for expired SSL Certs", :type => :string
   opt :group_count, "How many hosts to perform at once", :type => :string, :required => false
-  opt :precheck_only, "If true will only perform precheck. Actionset dependent", :type => :boolean, :required => false, :default => true
-  opt :dedicated_vrealm, "Determines if vRealm is dedicated", :type => :boolean, :required => false, :default => true
-  opt :snapshot_memory, "Whether to snapshot the memory", :type => :boolean, :required => false, :default => true
-  opt :quiesce_filesystem, "Whether to quiesce the filesystem for the snapshot", :type => :boolean, :required => false, :default => true
+  opt :precheck_only, "If true will only perform precheck. Actionset dependent", :type => :string, :required => false, :default => 'true'
+  opt :dedicated_vrealm, "Determines if vRealm is dedicated", :type => :string, :required => false, :default => 'true'
+  opt :snapshot_memory, "Whether to snapshot the memory", :type => :string, :required => false, :default => 'true'
+  opt :quiesce_filesystem, "Whether to quiesce the filesystem for the snapshot", :type => :string, :required => false, :default => 'true'
+  opt :reboot_environment, "Reboot environment after upgrade", :type => :string, :required => false, :default => 'false'
+  opt :vcddb_db_account, "VCDDB account", :type => :string, :required => false
+  opt :host_prep, "Set to false to not perform a host prep", :type => :string, :required => false, :default => 'true'
+  opt :nsp_build, "Set to build number of NSP", :type => :string, :require => false, :default => '4368576'
 end
 
 #validate input
-Trollop::die :action, "Action Set Name is incorrect" unless /(\w+_praxis_child|\w+_praxis_hosts|\w+_praxis_parent|\w+vrealm_hosts|\w+_vrealm_vcenter|upgrade_vrealm_vcd)/.match(opts[:action])
+Trollop::die :action, "Action Set Name is incorrect" unless /(\w+_praxis_child|\w+_praxis_hosts|\w+_praxis_parent|\w+vrealm_hosts|\w+_vrealm_vcenter|upgrade_vrealm_vcd|upgrade_vrealm_nsx)/.match(opts[:action])
 Trollop::die :target_vcd_version, "Must Match X.Y.Z" unless /^\d+[.]\d+[.]\d+$/.match(opts[:target_vcd_version]) if opts[:target_vcd_version]
 Trollop::die :target_vcd_build, "Must Match 1234567" unless /^\d{7}$/.match(opts[:target_vcd_build]) if opts[:target_vcd_build]
+
 
 #methods
 def ssh_conn(vm, user, domain, adpass)
@@ -126,33 +131,76 @@ opts[:vrealms].each { |vrealm|
   if opts[:action].downcase =~ /\w+_hosts/
     opts[:ipmi_password] = get_password(opts[:ad_password], 'ADMIN@ipmi-dXpXsXchXsrvX', domain.split(".")[0])
     opts[:vcenter_root_password] = ssh_conn(vc, 'root', domain.split(".")[0], opts[:ad_password])
-  elsif opts[:action].downcase =~ /upgrade_vrealm_vcd/
-    opts[:zedVersion] = '1.1.13'
-    opts[:target_version] = opts[:target_vcd_version]
-    opts[:target_build] = opts[:target_vcd_build]
-
+  elsif opts[:action].downcase =~ /upgrade_vrealm_vcd|upgrade_vrealm_nsx/
     #build ad_credentials
     ad_credentials[:username] = opts[:ad_username]
     ad_credentials[:password] = opts[:ad_password]
     opts[:ad_credentials] = ad_credentials
 
-    #build snapshot_options
-    snapshot_options[:snapshot_name] = opts[:change_number] + "-pre-vcd-upgrade"
-    snapshot_options[:snapshot_memory] = opts[:snapshot_memory]
-    snapshot_options[:quiesce_filesystem] = opts[:quiesce_filesystem]
-    opts[:snapshot_options] = snapshot_options
-
     #delete not used options
     opts.delete(:ad_username)
     opts.delete(:ad_password)
-    opts.delete(:target_vcd_version)
-    opts.delete(:target_vcd_build) 
-    opts.delete(:change_number)
-    opts.delete(:snapshot_memory)
-    opts.delete(:quiesce_filesystem)
+
+    if opts[:action].downcase =~ /upgrade_vrealm_vcd/
+
+      opts[:target_version] = opts[:target_vcd_version]
+      opts[:target_build] = opts[:target_vcd_build]
+
+
+      #build snapshot_options
+      snapshot_options[:snapshot_name] = opts[:change_number] + "-pre-vcd-upgrade"
+      snapshot_options[:snapshot_memory] = opts[:snapshot_memory]
+      snapshot_options[:quiesce_filesystem] = opts[:quiesce_filesystem]
+      opts[:snapshot_options] = snapshot_options
+
+      #delete not used options
+      opts.delete(:target_vcd_version)
+      opts.delete(:target_vcd_build) 
+      opts.delete(:change_number)
+      opts.delete(:snapshot_memory)
+      opts.delete(:quiesce_filesystem)
+    else #if action is updgrade vrealm nsx
+      #define vm names needed for nsx upgrade
+      nsx_vm_name = vrealm + "mgmt-vsm0"
+      nsp_vm_name = vrealm + 'mgmt-nsp-a'
+      
+      #get nsx creds
+      nsx_secret = 'admin@' + nsx_vm_name
+      nsx_credentials = {}
+      nsx_credentials[:username] = 'admin'
+      nsx_credentials[:password] = get_password(ad_credentials[:password], nsx_secret, domain.split(".")[0])
+
+      #get nsp creds
+      nsp_secret = 'admin@' + nsp_vm_name
+      nsp_credentials = {}
+      nsp_credentials[:username] = 'admin'
+      nsp_credentials[:password] = get_password(ad_credentials[:password], nsp_secret, domain.split(".")[0])
+
+      #get ipmi creds
+      ipmi_credentials = {}
+      ipmi_credentials[:username] = 'ADMIN'
+      ipmi_credentials[:password] = get_password(ad_credentials[:password], 'ADMIN@ipmi-dXpXsXchXsrvX', domain.split(".")[0])
+
+      #esx credentials
+      esx_credentials = {}
+      esx_credentials[:username] = 'root'
+      esx_credentials[:password] = opts[:esx_password]
+      #delete esx_password from opts
+      opts.delete(:esx_password)
+
+      #get target root password
+      opts[:target_vcenter_root_password] = ssh_conn(vc, 'root', domain.split(".")[0], ad_credentials[:password])
+
+      #add credentials to opts
+      opts[:nsx_credentials] = nsx_credentials
+      opts[:nsp_credentials] = nsp_credentials
+      opts[:ipmi_credentials] = ipmi_credentials
+      opts[:esx_credentials] = esx_credentials
+    end
   else
     opts[:target_vcenter_root_password] = ssh_conn(vc, 'root', domain.split(".")[0], opts[:ad_password])
     opts[:target_vcenter_sso_password] = ssh_conn(vc, 'administrator@vsphere.local', domain.split(".")[0], opts[:ad_password])
+
     if opts[:action].downcase =~ /\w+_praxis_parent/
       sso = vrealm + "mgmt-sso-a"
       opts[:sso_root_password] = ssh_conn(sso, 'root', domain.split(".")[0], opts[:ad_password])
@@ -177,31 +225,37 @@ opts[:vrealms].each { |vrealm|
   newOpts = opts.clone
   if opts[:action] =~ /\w+_hosts/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /hyperic_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /hqPass/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /hyperic_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /hqPass/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_praxis_parent/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_praxis_child/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_vrealm_vcenter/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /upgrade_vrealm_vcd/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /hyperic/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /hyperic/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
+        newOpts.delete(k)
+      end
+    }
+  elsif opts[:action] =~ /upgrade_vrealm_nsx/
+    newOpts.each { |k,v|
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /hyperic/) || (k =~ /target_vcd_version/) || (k =~ /target_vcd_build/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /reboot_environment/)
         newOpts.delete(k)
       end
     }
