@@ -23,8 +23,8 @@ opts = Trollop::options do
   #Optional paremeters
   opt :esx_password, "ESXi Password", :type => :string, :required => false, :default => 'zombieownsall'
   opt :hyperic_password, "ESXi Password", :type => :string, :required => false, :default => 'm0n3yb0vin3'
-  opt :target_vcd_version, "vCloud-Director Version", :type => :string, :required => false
-  opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false
+  opt :target_vcd_version, "vCloud-Director Version", :type => :string, :required => false, :default => "8.10.1"
+  opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false, :default => "5225348"
   opt :zor_log_level, "Log level for the zor command", :type => :string, :required => false, :default => 'debug'
   opt :engine_api, "Zombie engine api location, i.e d0p1tlm-zmb-eng-fe-a:8080", :type => :string, :default => 'http://d0p1tlm-zmb-eng-fe-a:8080'
   opt :zedVersion, "Action Set Version", :type => :string, :default => '1.4.17'
@@ -34,12 +34,20 @@ opts = Trollop::options do
   opt :dedicated_vrealm, "Determines if vRealm is dedicated", :type => :boolean, :required => false, :default => true
   opt :snapshot_memory, "Whether to snapshot the memory", :type => :boolean, :required => false, :default => true
   opt :quiesce_filesystem, "Whether to quiesce the filesystem for the snapshot", :type => :boolean, :required => false, :default => true
+  opt :reboot_environment, "Reboot environment after upgrade", :type => :boolean, :required => false, :default => false
+  opt :vcddb_db_account, "VCDDB account", :type => :string, :required => false
 end
 
 #validate input
 Trollop::die :action, "Action Set Name is incorrect" unless /(\w+_praxis_child|\w+_praxis_hosts|\w+_praxis_parent|\w+vrealm_hosts|\w+_vrealm_vcenter|upgrade_vrealm_vcd)/.match(opts[:action])
 Trollop::die :target_vcd_version, "Must Match X.Y.Z" unless /^\d+[.]\d+[.]\d+$/.match(opts[:target_vcd_version]) if opts[:target_vcd_version]
 Trollop::die :target_vcd_build, "Must Match 1234567" unless /^\d{7}$/.match(opts[:target_vcd_build]) if opts[:target_vcd_build]
+
+if opts[:precheck_only] == true
+  opts[:precheck_only] = 'true'
+else
+  opts[:precheck_only] = 'false'
+end
 
 #methods
 def ssh_conn(vm, user, domain, adpass)
@@ -127,7 +135,7 @@ opts[:vrealms].each { |vrealm|
     opts[:ipmi_password] = get_password(opts[:ad_password], 'ADMIN@ipmi-dXpXsXchXsrvX', domain.split(".")[0])
     opts[:vcenter_root_password] = ssh_conn(vc, 'root', domain.split(".")[0], opts[:ad_password])
   elsif opts[:action].downcase =~ /upgrade_vrealm_vcd/
-    opts[:zedVersion] = '1.1.13'
+    opts[:zedVersion] = '1.1.19'
     opts[:target_version] = opts[:target_vcd_version]
     opts[:target_build] = opts[:target_vcd_build]
 
@@ -177,25 +185,25 @@ opts[:vrealms].each { |vrealm|
   newOpts = opts.clone
   if opts[:action] =~ /\w+_hosts/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /hyperic_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /hqPass/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /hyperic_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /hqPass/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_praxis_parent/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_praxis_child/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/)
         newOpts.delete(k)
       end
     }
   elsif opts[:action] =~ /\w+_vrealm_vcenter/
     newOpts.each { |k,v|
-      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/)
+      if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /esx_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/)
         newOpts.delete(k)
       end
     }

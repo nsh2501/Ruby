@@ -38,7 +38,7 @@ def get_adPass
     pArray = JSON.parse(jPass)
     ad_pass_ask = pArray['AD PASSWORD']
   else
-    ad_pass_ask = ask("Enter the AD password for the user #{runuser}: ") { |q| q.echo="*"};
+    ad_pass_ask = ask("Enter your AD Password: ") { |q| q.echo="*"};
   end
   localVM = ENV['HOSTNAME']
   runuser = `whoami`.chomp
