@@ -10,6 +10,7 @@ require 'vmware_secret_server'
 
 #functions 
 require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 #procss ID
 pid = Process.pid
@@ -50,7 +51,8 @@ Trollop::die :target_vcd_build, "Must Match 1234567" unless /^\d{7}$/.match(opts
 def ssh_conn(vm, user, domain, adpass)
   access = 'false'
   count = 0
-  puts "[ " + "INFO".green + " ] #{vm}: Attempting to connect via PMP Password with user #{user}"
+  clear_line
+  print "[ " + "INFO".green + " ] #{vm}: Attempting to connect via PMP Password with user #{user}"
   $logger.info "INFO - #{vm}: Attempting to connect via PMP Password"
   if user == 'administrator@vsphere.local'
     pass = 'vmware'
@@ -63,14 +65,17 @@ def ssh_conn(vm, user, domain, adpass)
       session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
       access = 'true'
       session.close
-      puts '[ ' + 'INFO'.green + " ] #{vm}: Succesfully authenticated"
+      clear_line
+      print '[ ' + 'INFO'.green + " ] #{vm}: Succesfully authenticated"
     rescue Net::SSH::AuthenticationFailed
       if (pass != 'm0n3yb0vin3') && (count == 0)
-        puts '[ ' + 'WARN'.yellow + " ] Failed to authenictate with password #{pass}. Trying default password."
+        clear_line
+        print '[ ' + 'WARN'.yellow + " ] Failed to authenictate with password #{pass}. Trying default password."
         pass = 'm0n3yb0vin3'
         count += 1
       else
-        puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password #{pass}."
+        clear_line
+        print '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password #{pass}."
         pass = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
         count += 1
       end
@@ -81,14 +86,17 @@ end
 
 def ssh_conn2(vm, user, pass)
   access = 'false'
-  puts "[ " + "INFO".green + " ] Verifying AD Password"
+  clear_line
+  print "[ " + "INFO".green + " ] Verifying AD Password"
   while access == 'false'
     begin
       session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
       access = 'true'
-      puts '[ ' + 'INFO'.green + " ] AD Authentication successful"
+      clear_line
+      print '[ ' + 'INFO'.green + " ] AD Authentication successful"
       session.close
     rescue Net::SSH::AuthenticationFailed
+        clear_line
         puts '[ ' + 'WARN'.yellow + " ] Failed to authenticate to #{vm} with password."
         pass = ask("Please enter your Ad Password") { |q| q.echo="*"}
     end
@@ -101,6 +109,7 @@ script_name = 'vSphere6_upg_kickoff'
 $logger = Syslog::Logger.new script_name
 $logger.level = Kernel.const_get 'Logger::INFO'
 $logger.info "INFO  - Logging initalized."
+clear_line
 puts "[ " + "INFO".green + " ] Logging started search #{script_name}[#{pid}] in /var/log/messages for logs."
 
 #static variables
@@ -260,12 +269,14 @@ opts[:vrealms].each { |vrealm|
       end
     }
   else
+    clear_line
     puts '[ ' + 'ERROR'.red + " ] Action set did not match any patterns"
     exit
   end
 
 
-  #Create Yaml File for use
+  #Create Yaml File for us
+  clear_line
   puts '[ ' + 'INFO'.green + " ] Creating #{yaml_file}"
   $logger.info "INFO - Creating #{yaml_file}"
   file = File.new(yaml_file, "w+")
@@ -281,11 +292,15 @@ opts[:vrealms].each { |vrealm|
   zor_response = JSON.parse("{\n" + (zor_rtn.scan(/(?m)\{\n(.+|\S+|\s+|\w+|\W+)\}\n\}/))[0][0] + "}\n}")
   if zor_response['response']['result']['code'] != 202
     $logger.error "ERROR - Post failed: #{zor_response['response']['result']['code']} - #{zor_response['response']['result']['description']}"
+    clear_line
     puts "[ " + "ERROR".red + " ] Post failed: #{zor_response['response']['result']['code']} - #{zor_response['response']['result']['description']}"
   else
+    clear_line
     puts "[ " + "INFO".green + " ] Post Sucessful: #{zor_response['response']['result']['code']} - #{zor_response['response']['result']['description']}"
+    clear_line
     puts "[ " + "INFO".green + " ] ZAI: #{zor_response['response']['entity']['id']}"
     $logger.debug "DEBUG - ZAI: #{zor_response['response']['entity']['id']}"
+    clear_line
     puts "[ " + "INFO".green + " ] Check #{zor_response['response']['entity']['id']} on http://#{opts[:engine_api]} to monitor status"
   end
 }
