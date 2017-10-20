@@ -8,7 +8,7 @@ require 'syslog/logger'
 require 'net/ssh'
 require 'vmware_secret_server'
 
-#functions 
+#functions
 require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
@@ -164,7 +164,7 @@ opts[:vrealms].each { |vrealm|
 
       #delete not used options
       opts.delete(:target_vcd_version)
-      opts.delete(:target_vcd_build) 
+      opts.delete(:target_vcd_build)
       opts.delete(:change_number)
       opts.delete(:snapshot_memory)
       opts.delete(:quiesce_filesystem)
@@ -172,7 +172,7 @@ opts[:vrealms].each { |vrealm|
       #define vm names needed for nsx upgrade
       nsx_vm_name = vrealm + "mgmt-vsm0"
       nsp_vm_name = vrealm + 'mgmt-nsp-a'
-      
+
       #get nsx creds
       nsx_secret = 'admin@' + nsx_vm_name
       nsx_credentials = {}
