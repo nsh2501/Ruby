@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
-require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
-require_relative '/home/nholloway/scripts/Ruby/functions/podlist.rb'
-require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
+require_relative '/home/nholloway/scripts/Ruby-test/functions/format.rb'
+require_relative '/home/nholloway/scripts/Ruby-test/functions/podlist.rb'
+require_relative '/home/nholloway/scripts/Ruby-test/functions/rbvmomi_methods.rb'
 
 #functions
 def f_get_vcenter_list(logger, **hash_args)
@@ -55,7 +55,6 @@ def f_get_vcenter_list(logger, **hash_args)
     print '[ ' + 'INFO'.white + " ] Getting list of customer vCenters"
     pod_list.each do |pod|
       vcenters.push "#{pod}tlm-mgmt-vc0"
-      vcenters.push "#{pod}oss-mgmt-vc0"
     end
     @cust_vms = []
     num_workers = 5
@@ -74,6 +73,7 @@ def f_get_vcenter_list(logger, **hash_args)
     threads.each(&:join)
 
     vcenters = @cust_vms
+    vcenters.select! { |vcenter| !vcenter.match(/tlm|oss/) }
   when 'all'
     clear_line
     logger.info "INFO - Gettin list of all vCenters."
@@ -114,7 +114,7 @@ end
 def f_get_cust_vcenters(vcenter, ad_user, ad_pass)
   vim = connect_viserver(vcenter, ad_user, ad_pass)
   dc = vim.serviceInstance.find_datacenter
-  result = get_vm(vim,dc)
+  result = get_vm_2(vim)
   powered_on = result.select { |x| x.propSet.find { |prop| prop.name == 'runtime.powerState' }.val == 'poweredOn' }
   vcenters = powered_on.select { |x| x.propSet.find { |prop| prop.name == 'name' }.val =~ (/vc0/) }
   vm_names = vcenters.map { |x| x.propSet.find { |prop| prop.name == 'name' }.val }

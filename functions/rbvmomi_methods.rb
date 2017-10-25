@@ -11,7 +11,7 @@ def connect_viserver(viserver, user, password)
     puts e.message
     raise 'FAILED'
   end
-end
+end 
 
 #validate guest os credentials
 def verify_user_creds(vim, vm, auth)
@@ -277,8 +277,12 @@ def get_vm_2(vim, vm_prop=nil)
                 { :type => 'VirtualMachine', :pathSet => vm_prop}                                                                                                                                                     
             ]                                                                                                                                                                                            
         )                                                                                                                                                                                                
-result = pc.RetrieveProperties(:specSet => [filterSpec]) 
+  result = pc.RetrieveProperties(:specSet => [filterSpec])
+end
 
+##### NOT DONE YET ######
+def get_powered_on_vms(vim, vm_prop=nil)
+  vm_list = get_vm_2(vim, vm_prop)
 
 end
 

@@ -124,7 +124,6 @@ ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{domain}/SecretServer/webservic
 
 #user variables
 ad_credentials = {}
-snapshot_options = {}
 opts[:ad_username] = `whoami`.chomp
 opts[:ad_password] = get_adPass
 
@@ -146,10 +145,6 @@ opts[:vrealms].each { |vrealm|
     ad_credentials[:password] = opts[:ad_password]
     opts[:ad_credentials] = ad_credentials
 
-    #delete not used options
-    opts.delete(:ad_username)
-    opts.delete(:ad_password)
-
     if opts[:action].downcase =~ /upgrade_vrealm_vcd/
 
       opts[:target_version] = opts[:target_vcd_version]
@@ -157,17 +152,12 @@ opts[:vrealms].each { |vrealm|
 
 
       #build snapshot_options
+      snapshot_options = {}
       snapshot_options[:snapshot_name] = opts[:change_number] + "-pre-vcd-upgrade"
       snapshot_options[:snapshot_memory] = opts[:snapshot_memory]
       snapshot_options[:quiesce_filesystem] = opts[:quiesce_filesystem]
       opts[:snapshot_options] = snapshot_options
 
-      #delete not used options
-      opts.delete(:target_vcd_version)
-      opts.delete(:target_vcd_build)
-      opts.delete(:change_number)
-      opts.delete(:snapshot_memory)
-      opts.delete(:quiesce_filesystem)
     else #if action is updgrade vrealm nsx
       #define vm names needed for nsx upgrade
       nsx_vm_name = vrealm + "mgmt-vsm0"
@@ -194,8 +184,6 @@ opts[:vrealms].each { |vrealm|
       esx_credentials = {}
       esx_credentials[:username] = 'root'
       esx_credentials[:password] = opts[:esx_password]
-      #delete esx_password from opts
-      opts.delete(:esx_password)
 
       #get target root password
       opts[:target_vcenter_root_password] = ssh_conn(vc, 'root', domain.split(".")[0], ad_credentials[:password])
@@ -221,17 +209,17 @@ opts[:vrealms].each { |vrealm|
   end
 
   #clearing out opts of any nil values or given
-  opts.each { |k,v|
+  newOpts = opts.clone
+  newOpts.each { |k,v|
     if v.nil?
-      opts.delete(k)
+      newOpts.delete(k)
     end
     if k =~ /given/
-      opts.delete(k)
+      newOpts.delete(k)
     end
   }
 
   #creating new array for yaml file
-  newOpts = opts.clone
   if opts[:action] =~ /\w+_hosts/
     newOpts.each { |k,v|
       if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /hyperic_password/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /hqPass/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /precheck_only/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /change_number/) || (k =~ /reboot_environment/) || (k =~ /vcddb_db_account/) || (k =~ /host_prep/) || (k =~ /nsp_build/)
@@ -262,17 +250,46 @@ opts[:vrealms].each { |vrealm|
         newOpts.delete(k)
       end
     }
+    #remove unused options from newOpts
+    #delete not used options
+    newOpts.delete(:target_vcd_version)
+    newOpts.delete(:target_vcd_build)
+    newOpts.delete(:change_number)
+    newOpts.delete(:snapshot_memory)
+    newOpts.delete(:quiesce_filesystem)
+
+    #delete esx_password from newOpts
+    newOpts.delete(:esx_password)
+
+    #delete not used options
+    newOpts.delete(:ad_username)
+    newOpts.delete(:ad_password)
   elsif opts[:action] =~ /upgrade_vrealm_nsx/
     newOpts.each { |k,v|
       if (k =~ /action/) || (k =~ /vrealms/) || (k =~ /zor_log_level/) || (k =~ /engine_api/) || (k =~ /help/) || (k =~ /zedVersion/) || (k =~ /hyperic/) || (k =~ /target_vcd_version/) || (k =~ /target_vcd_build/) || (k =~ /dedicated_vrealm/) || (k =~ /snapshot_memory/) || (k =~ /quiesce_filesystem/) || (k =~ /reboot_environment/)
         newOpts.delete(k)
       end
     }
+    #remove unused options from newOpts
+    #delete not used options
+    newOpts.delete(:target_vcd_version)
+    newOpts.delete(:target_vcd_build)
+    newOpts.delete(:change_number)
+    newOpts.delete(:snapshot_memory)
+    newOpts.delete(:quiesce_filesystem)
+
+    #delete esx_password from newOpts
+    newOpts.delete(:esx_password)
+
+    #delete not used options
+    newOpts.delete(:ad_username)
+    newOpts.delete(:ad_password)
   else
     clear_line
     puts '[ ' + 'ERROR'.red + " ] Action set did not match any patterns"
     exit
   end
+
 
 
   #Create Yaml File for us
