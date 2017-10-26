@@ -193,6 +193,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VCDA Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VCDA Resource on #{vrealm}"
   end
 
   #vcdb
@@ -216,6 +217,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VCDB Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VCDB Resource on #{vrealm}"
   end
 
   #vcddb
@@ -239,6 +241,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VCDDB Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VCDDB Resource on #{vrealm}"
   end
 
   #vcdnfs
@@ -262,6 +265,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VCDNFS Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VCDNFS Resource on #{vrealm}"
   end
 
   #vsupg
@@ -289,6 +293,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VSUPG Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VSUPG Resource on #{vrealm}"
   end
 
   #vsm
@@ -348,6 +353,7 @@ opts[:vrealms].each do |vrealm|
   else
     clear_line
     logger.info "ERROR - Could not find VSM Resource on #{vrealm}"
+    puts '[ ' + 'ERROR'.red + " ] Could not find VSM Resource on #{vrealm}"
   end
 
   logger.debug "DEBUG - Update hash: #{update_hash}"
