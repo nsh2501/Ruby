@@ -9,11 +9,11 @@ require 'rest-client'
 require 'pg'
 
 
-require_relative '/home/nholloway/scripts/Ruby-test/functions/format.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/password_functions.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/rbvmomi_methods.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/vcenter_list_v2.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/podlist.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/vcenter_list_v2.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/podlist.rb'
 
 #cli params
 opts = Trollop::options do

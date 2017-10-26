@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
-require_relative '/home/nholloway/scripts/Ruby-test/functions/format.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/podlist.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/rbvmomi_methods.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/podlist.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 
 #functions
 def f_get_vcenter_list(logger, **hash_args)
