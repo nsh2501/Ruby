@@ -37,7 +37,7 @@ end
 Trollop::die :pods, "You can't specify pods option with vrealms" if opts[:pods_given] && opts[:vrealms_given]
 Trollop::die :all_pods, "You can't specify all_pods option with vrealms" if opts[:all_pods_given] && opts[:vrealms_given]
 Trollop::die :all_pods, "You can't specify all_pods option with pods" if opts[:all_pods_given] && opts[:pods_given]
-Trollop::die :vrealms, "Must match dXpYvZ format" unless opts[:vrealms].reject { |vrealm| vrealm.match(/d\d+p\d+v\d+/) }.empty?
+
 
 
 #functions
