@@ -173,7 +173,7 @@ opts[:vrealms].each do |vrealm|
   print '[ ' + 'INFO'.white + " ] Checking values and updating where necessary for #{vrealm}"
    
   #vcda
-  if !vcda.nil?
+  if !vcda.empty?
     logger.debug "DEBUG - VCDA Resource: vcenter - #{vcda[0]['vcenter_hostname']}, Calculated #{vcenter_hostname}"
     logger.debug "DEBUG - VCDA Resource: Cluster - #{vcda[0]['cluster_name']}, Calculated #{cluster_name}"
     logger.debug "DEBUG - VCDA Resource: DataCenter - #{vcda[0]['datacenter_name']}, Calculated #{datacenter_name}"
@@ -196,7 +196,7 @@ opts[:vrealms].each do |vrealm|
   end
 
   #vcdb
-  if !vcdb.nil?
+  if !vcdb.empty?
     logger.debug "DEBUG - VCDB Resource: vcenter - #{vcdb[0]['vcenter_hostname']}, Calculated #{vcenter_hostname}"
     logger.debug "DEBUG - VCDB Resource: Cluster - #{vcdb[0]['cluster_name']}, Calculated #{cluster_name}"
     logger.debug "DEBUG - VCDB Resource: DataCenter - #{vcdb[0]['datacenter_name']}, Calculated #{datacenter_name}"
@@ -219,7 +219,7 @@ opts[:vrealms].each do |vrealm|
   end
 
   #vcddb
-  if !vcddb.nil?
+  if !vcddb.empty?
     logger.debug "DEBUG - VCDDB Resource: vcenter -  #{vcddb[0]['vcenter_hostname']}, Calculated #{vcenter_hostname}"
     logger.debug "DEBUG - VCDDB Resource: Cluster -  #{vcddb[0]['cluster_name']}, Calculated #{cluster_name}"
     logger.debug "DEBUG - VCDDB Resource: DataCenter -  #{vcddb[0]['datacenter_name']}, Calculated #{datacenter_name}"
@@ -242,7 +242,7 @@ opts[:vrealms].each do |vrealm|
   end
 
   #vcdnfs
-  if !vcdnfs.nil?
+  if !vcdnfs.empty?
     logger.debug "DEBUG - VCDNFS Resource: vcenter -  #{vcdnfs[0]['vcenter_hostname']}, Calculated #{vcenter_hostname}"
     logger.debug "DEBUG - VCDNFS Resource: Cluster -  #{vcdnfs[0]['cluster_name']}, Calculated #{cluster_name}"
     logger.debug "DEBUG - VCDNFS Resource: DataCenter -  #{vcdnfs[0]['datacenter_name']}, Calculated #{datacenter_name}"
@@ -265,7 +265,7 @@ opts[:vrealms].each do |vrealm|
   end
 
   #vsupg
-  if !vsupg.nil?
+  if !vsupg.empty?
     logger.debug "DEBUG - VSUPG Resource: VC Build -  #{vsupg[0]['target_vcenter_build']}, Imported #{opts[:target_vcenter_build]}"
     logger.debug "DEBUG - VSUPG Resource: ESXI Build -  #{vsupg[0]['target_esxi_build']}, Imported Default: #{opts[:target_esxi_build]}, DaaS: #{opts[:daas_target_esxi_build]}"
     if (vsupg[0]['target_vcenter_build'] == opts[:target_vcenter_build])
@@ -292,7 +292,7 @@ opts[:vrealms].each do |vrealm|
   end
 
   #vsm
-  if !vsm.nil?
+  if !vsm.empty?
     logger.debug "DEBUG - VSM Resource: vcenter -  #{vsm[0]['vcenter_hostname']}, Calculated #{vcenter_hostname}"
     logger.debug "DEBUG - VSM Resource: Cluster -  #{vsm[0]['cluster_name']}, Calculated #{cluster_name}"
     logger.debug "DEBUG - VSM Resource: DataCenter -  #{vsm[0]['datacenter_name']}, Calculated #{datacenter_name}"
@@ -366,7 +366,7 @@ opts[:vrealms].each do |vrealm|
     end
   else
     #update vcda if needed
-    if !vcda.nil?
+    if !vcda.empty?
       update_query(pg, logger, vcda[0]['fqdn'], 'resources', vcda[0]['id'], 'vm_name', vcda_vm_name) unless vcda[0]['vm_name'] == vcda_vm_name
       update_query(pg, logger, vcda[0]['fqdn'], 'resources', vcda[0]['id'], 'vcenter_hostname', vcenter_hostname) unless vcda[0]['vcenter_hostname'] == vcenter_hostname
       update_query(pg, logger, vcda[0]['fqdn'], 'resources', vcda[0]['id'], 'datacenter_name', datacenter_name) unless vcda[0]['datacenter_name'] == datacenter_name
@@ -374,7 +374,7 @@ opts[:vrealms].each do |vrealm|
     end
 
     #update vcdb if needed
-    if !vcdb.nil?
+    if !vcdb.empty?
       update_query(pg, logger, vcdb[0]['fqdn'], 'resources', vcdb[0]['id'], 'vm_name', vcdb_vm_name) unless vcdb[0]['vm_name'] == vcdb_vm_name
       update_query(pg, logger, vcdb[0]['fqdn'], 'resources', vcdb[0]['id'], 'vcenter_hostname', vcenter_hostname) unless vcdb[0]['vcenter_hostname'] == vcenter_hostname
       update_query(pg, logger, vcdb[0]['fqdn'], 'resources', vcdb[0]['id'], 'datacenter_name', datacenter_name) unless vcdb[0]['datacenter_name'] == datacenter_name
@@ -382,7 +382,7 @@ opts[:vrealms].each do |vrealm|
     end
 
     #update vcddb if needed
-    if !vcddb.nil?
+    if !vcddb.empty?
       update_query(pg, logger, vcddb[0]['fqdn'], 'resources', vcddb[0]['id'], 'vm_name', vcddb_vm_name) unless vcddb[0]['vm_name'] == vcddb_vm_name
       update_query(pg, logger, vcddb[0]['fqdn'], 'resources', vcddb[0]['id'], 'vcenter_hostname', vcenter_hostname) unless vcddb[0]['vcenter_hostname'] == vcenter_hostname
       update_query(pg, logger, vcddb[0]['fqdn'], 'resources', vcddb[0]['id'], 'datacenter_name', datacenter_name) unless vcddb[0]['datacenter_name'] == datacenter_name
@@ -390,7 +390,7 @@ opts[:vrealms].each do |vrealm|
     end
 
     #update vcdnfs if needed
-    if !vcdnfs.nil?
+    if !vcdnfs.empty?
       update_query(pg, logger, vcdnfs[0]['fqdn'], 'resources', vcdnfs[0]['id'], 'vm_name', vcdnfs_vm_name) unless vcdnfs[0]['vm_name'] == vcdnfs_vm_name
       update_query(pg, logger, vcdnfs[0]['fqdn'], 'resources', vcdnfs[0]['id'], 'vcenter_hostname', vcenter_hostname) unless vcdnfs[0]['vcenter_hostname'] == vcenter_hostname
       update_query(pg, logger, vcdnfs[0]['fqdn'], 'resources', vcdnfs[0]['id'], 'datacenter_name', datacenter_name) unless vcdnfs[0]['datacenter_name'] == datacenter_name
@@ -398,7 +398,7 @@ opts[:vrealms].each do |vrealm|
     end
 
     #update vsm if needed
-    if !vsm.nil?
+    if !vsm.empty?
       update_query(pg, logger, vsm[0]['fqdn'], 'resources', vsm[0]['id'], 'vm_name', vsm_vm_name) unless vsm[0]['vm_name'] == vsm_vm_name
       update_query(pg, logger, vsm[0]['fqdn'], 'resources', vsm[0]['id'], 'vcenter_hostname', vcenter_hostname) unless vsm[0]['vcenter_hostname'] == vcenter_hostname
       update_query(pg, logger, vsm[0]['fqdn'], 'resources', vsm[0]['id'], 'datacenter_name', datacenter_name) unless vsm[0]['datacenter_name'] == datacenter_name
@@ -450,7 +450,7 @@ opts[:vrealms].each do |vrealm|
 
 
     #update VSUPG vCenter Build if needed
-    if !vsupg.nil?
+    if !vsupg.empty?
       update_query(pg, logger, vsupg[0]['fqdn'], 'resources', vsupg[0]['id'], 'target_vcenter_build', opts[:target_vcenter_build]) unless vsupg[0]['target_vcenter_build'] == opts[:target_vcenter_build]
 
       #update VSUPG ESXI Build if needed
