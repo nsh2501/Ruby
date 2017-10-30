@@ -167,13 +167,25 @@ opts[:vrealms].each { |vrealm|
       nsx_secret = 'admin@' + nsx_vm_name
       nsx_credentials = {}
       nsx_credentials[:username] = 'admin'
-      nsx_credentials[:password] = get_password(ad_credentials[:password], nsx_secret, domain.split(".")[0])
+      begin
+        nsx_credentials[:password] = get_password(ad_credentials[:password], nsx_secret, domain.split(".")[0])
+      rescue
+        clear_line
+        puts '[ ' + 'WARN'.yellow + " ] Unable to find password in Secret Server for #{nsx_secret}"
+        nsx_credentials[:password] = ask("Please enter a new password for #{nsx_secret} and user #{nsx_credentials[:username]}") { |q| q.echo="*"}
+      end
 
       #get nsp creds
       nsp_secret = 'admin@' + nsp_vm_name
       nsp_credentials = {}
       nsp_credentials[:username] = 'admin'
-      nsp_credentials[:password] = get_password(ad_credentials[:password], nsp_secret, domain.split(".")[0])
+      begin
+        nsp_credentials[:password] = get_password(ad_credentials[:password], nsp_secret, domain.split(".")[0])
+      rescue
+        clear_line
+        puts '[ ' + 'WARN'.yellow + " ] Unable to find password in Secret Server for #{nsp_secret}"
+        nsp_credentials[:password] = ask("Please enter a new password for #{nsp_secret} and user #{nsp_credentials[:username]}") { |q| q.echo="*"}
+      end
 
       #get ipmi creds
       ipmi_credentials = {}
