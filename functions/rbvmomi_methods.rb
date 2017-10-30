@@ -1,4 +1,5 @@
 require 'rbvmomi'
+require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 
 def connect_viserver(viserver, user, password)
@@ -319,6 +320,23 @@ def get_connected_hosts(vim, dc, host_prop=nil)
   vmhosts = get_vmhosts(vim, dc, host_prop)
   connected_hosts = vmhosts.select { |vmhost| vmhost.propSet.find { |prop| prop.name == 'runtime.connectionState'}.val == 'connected' }
   return connected_hosts
+end
+
+def take_snapshot(vm, name, snap_memory, snap_quiesce, logger)
+  vm_name = vm.propSet.find { |prop| prop.name == 'name' }.val
+  begin
+    clear_line
+    logger.info "INFO - Taking snapshot for #{vm_name}"
+    print '[ ' + 'INFO'.white + " ] Taking snapshot for #{vm_name}"
+    vm.obj.CreateSnapshot_Task(name: name, description: ' ', memory: snap_memory, quiesce: snap_quiesce).wait_for_completion
+    return 'SUCCESS'
+  rescue => e
+    clear_line
+    logger.info "ERROR - Snapshot for #{vm_name} failed!"
+    puts '[ ' + 'ERROR'.red + " ] Snapshot for #{vm_name} failed! Please see error below"
+    puts e.message
+    return 'FAILED'
+  end
 end
 
 
