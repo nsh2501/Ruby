@@ -4,7 +4,7 @@
 #requires
 require 'trollop'
 require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
-require_relative '/home/nholloway/scripts/Ruby-test/functions/rbvmomi_methods.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
 
 #params
