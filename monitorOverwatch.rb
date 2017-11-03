@@ -109,5 +109,7 @@ until (overall_status == 'complete') && (overall_result == 'success') do
   overall_result = resultsJSON['response']['entity']['result']
 end
 
-
-
+send_email(opts[:email], opts[:zed_id], 'success')
+clear_line
+logger.info "INFO - Zombie Action ID Completed"
+print '[ ' + 'INFO'.green + " ] Zombie Action ID Completed"
