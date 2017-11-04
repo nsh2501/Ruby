@@ -75,14 +75,6 @@ overall_result = resultsJSON['response']['entity']['result']
 
 send_email(opts[:email], opts[:zed_id], 'starting')
 
-if (overall_status == 'complete') && (overall_result == 'success')
-  send_email(opts[:email], opts[:zed_id], 'success')
-  clear_line
-  logger.info "INFO - Zombie Action ID Completed"
-  print '[ ' + 'INFO'.green + " ] Zombie Action ID Completed"
-  exit
-end
-
 until (overall_status == 'complete') && (overall_result == 'success') do
   ctime = `date +%H:%M`
   if failedResults.empty?
