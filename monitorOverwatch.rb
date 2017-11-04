@@ -103,7 +103,7 @@ until (overall_status == 'complete') && (overall_result == 'success') do
     headers: {accept: 'application/json'})  
 
   resultsJSON = JSON.parse(results);
-  resultsSTR = results_to_s;
+  resultsSTR = results.to_s;
   failedResults = resultsSTR.scan(/failure/)
   overall_status = resultsJSON['response']['entity']['status']
   overall_result = resultsJSON['response']['entity']['result']
