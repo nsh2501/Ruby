@@ -5,7 +5,10 @@ require 'rest-client'
 require 'json'
 require 'trollop'
 require 'mail'
+require 'active_support/time'
 require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
+require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
 
 #params
 opts = Trollop::options do
@@ -13,7 +16,12 @@ opts = Trollop::options do
   opt :email, "Email address you would like alerts to be sent to", :type => :string, :required => true
   opt :log_level, "Level of logs", :type => :string, :required => false, :default => 'INFO'
   opt :check_min, "The length of time in between checks in minutes", :type => :int, :required => false, :default => 15
+  opt :check_vcenter, "Set to true if you would like to monitor maintenance mode tasks in vCenter", :type => :boolean, :required => false, :default => false
+  opt :vrealm, "Needed only if check-vcenter is set to true", :type => :string, :required => false
 end
+
+#validation
+Trollop::die :vrealm, "Must enter a vrealm if check_vcenter is true" if (opts[:check_vcenter]) && (opts[:vrealm_given] == false)
 
 #functions
 def send_email (email, zaid, status)
