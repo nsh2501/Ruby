@@ -21,7 +21,7 @@ opts = Trollop::options do
 end
 
 #validation
-Trollop::die :vrealm, "Must enter a vrealm if check_vcenter is true" if (opts[:check_vcenter]) && (opts[:vrealm_given] == false)
+Trollop::die :vrealm, "Must enter a vrealm if check_vcenter is true" if (opts[:check_vcenter] == true) && (opts[:vrealm_given] == false)
 
 #functions
 def send_email (email, zaid, status)
