@@ -137,6 +137,10 @@ until (overall_status == 'complete') && (overall_result == 'success') do
         logger.info "INFO - Found long running maintenance mode. Sending email"
         print '[ ' + 'INFO'.white + " ] Found long running maintenance mode. Sending email"
         send_email(opts[:email], opts[:zed_id], 'maint')
+      else
+        clear_line
+        logger.info "INFO - Found no long running maintenance modes."
+        print '[ ' + 'INFO'.white + " ] Found no long running maintenance modes."
       end
     end
     vim.close
