@@ -52,7 +52,7 @@ end
 ad_user = 'AD\\' + `whoami`.chomp
 script_name = 'monitorOverwatch.rb'
 check_length = opts[:check_min] * 60
-vcenter = opts[:vrealm] + mgmt-vc0
+vcenter = opts[:vrealm] + "mgmt-vc0"
 
 #Get AD Pass if check_vcdtner is true
 if opts[:check_vcenter]
