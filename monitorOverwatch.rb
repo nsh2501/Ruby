@@ -110,7 +110,7 @@ until (overall_status == 'complete') && (overall_result == 'success') do
   end
 
   #check vCenter if email was not already sent out and is set to true
-  if (opts[:vcenter]) && (failedResults.empty?)
+  if (opts[:check_vcenter]) && (failedResults.empty?)
     clear_line
     logger.info "INFO - Checking #{opts[:vrealm]} for enter maintenance mode tasks"
     print '[ ' + 'INFO'.white + " ] Checking #{opts[:vrealm]} for enter maintenance mode tasks"
