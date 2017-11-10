@@ -21,7 +21,7 @@ opts = Trollop::options do
 end
 
 #validation
-Trollop::die :vrealm, "Must enter a vrealm if check_vcenter is true" if (opts[:check_vcenter] == true) && (opts[:vrealm_given] == false)
+Trollop::die :vrealm, "Must enter a vrealm if check_vcenter is true" if (opts[:check_vcenter] == true) && (opts[:vrealm_given].nil?)
 
 #functions
 def send_email (email, zaid, status)
@@ -33,6 +33,8 @@ def send_email (email, zaid, status)
     email_body = "Zombie Action ID: #{zaid} has issues. Please check now"
   elsif status == 'starting'
     email_body = "Started monitoring of Zombie Action ID: #{zaid}."
+  elsif status == 'maint'
+    email_body = "Detected a long running maintenance mode on Zombe Action ID: #{zaid}"
   else
     email_body = "Zombie Action ID: #{zaid} has been completed. Good Job!"
   end
@@ -50,6 +52,12 @@ end
 ad_user = 'AD\\' + `whoami`.chomp
 script_name = 'monitorOverwatch.rb'
 check_length = opts[:check_min] * 60
+vcenter = opts[:vrealm] + mgmt-vc0
+
+#Get AD Pass if check_vcdtner is true
+if opts[:check_vcenter]
+  ad_pass = get_adPass
+end
 
 #logging
 logger = config_logger(opts[:log_level].upcase, script_name)
@@ -87,8 +95,8 @@ until (overall_status == 'complete') && (overall_result == 'success') do
   ctime = `date +%H:%M`
   if failedResults.empty?
     clear_line
-    logger.info "INFO - No failures detected. Sleeping for #{opts[:check_min]} minutes."
-    print '[ ' + 'INFO'.white + " ] No failures detected. Sleeping for #{opts[:check_min]} minutes. Time of last check #{ctime}"
+    logger.info "INFO - No failures detected."
+    print '[ ' + 'INFO'.white + " ] No failures detected."
   else
     clear_line
     logger.info "INFO - Failures detected. Sending email"
@@ -97,9 +105,47 @@ until (overall_status == 'complete') && (overall_result == 'success') do
     send_email(opts[:email], opts[:zed_id], 'failed')
 
     clear_line
-    logger.info "INFO - Email Sent. Sleeping for #{opts[:check_min]} minutes."
-    print '[ ' + 'INFO'.white + " ] Email Sent. Sleeping for #{opts[:check_min]} minutes. Time of last check #{ctime}"
+    logger.info "INFO - Email Sent."
+    print '[ ' + 'INFO'.white + " ] Email Sent."
   end
+
+  #check vCenter if email was not already sent out and is set to true
+  if (opts[:vcenter]) && (failedResults.empty?)
+    clear_line
+    logger.info "INFO - Checking #{opts[:vrealm]} for enter maintenance mode tasks"
+    print '[ ' + 'INFO'.white + " ] Checking #{opts[:vrealm]} for enter maintenance mode tasks"
+
+    #connect to vCenter and get tasks
+    vim = connect_viserver(vcenter, ad_user, ad_pass)
+    dc = vim.serviceInstance.find_datacenter
+    tasks = get_tasks(vim, dc, 'children', 100)
+
+    #select only maintenance mode tasks
+    maint = tasks.select { |task| (task[:descriptionId] == 'HostSystem.enterMaintenanceMode') && (task[:state] != 'success')};
+
+    unless maint.empty?
+      send_maint_email = false
+      go through each 
+      maint.each do |task|
+        if task[:startTime] < (Time.now - opts[:check_min].minutes)
+          send_maint_email = true
+        end
+      end
+      #send email if needed
+      if send_maint_email
+        clear_line
+        logger.info "INFO - Found long running maintenance mode. Sending email"
+        print '[ ' + 'INFO'.white + " ] Found long running maintenance mode. Sending email"
+        send_email(opts[:email], opts[:zed_id], 'maint')
+      end
+    end
+    vim.close
+  end
+  #sleep for specified minuntes
+  clear_line
+  logger.info "INFO - Sleeping for #{opts[:check_min]} minutes. Time of last check #{ctime}"
+  print '[ ' + 'INFO'.white + " ] Sleeping for #{opts[:check_min]} minutes. Time of last check #{ctime}"
+
   sleep(check_length)
   clear_line
   logger.info "INFO - Getting results again from zombie"

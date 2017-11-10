@@ -339,7 +339,23 @@ def take_snapshot(vm, name, snap_memory, snap_quiesce, logger)
   end
 end
 
+def get_tasks(vim, entity, recursion, amount)
+  #create TaskFilterSPec
+  filter = RbVmomi::VIM.TaskFilterSpec(
+    :entity => RbVmomi::VIM.TaskFilterSpecByEntity(
+      :entity => entity,
+      :recursion => RbVmomi::VIM.TaskFilterSpecRecursionOption(recursion)
+    )
+  )
 
+  #Create task collector
+  tasks_collector = vim.serviceContent.taskManager.CreateCollectorForTasks(:filter => filter)
+
+  #get tasks
+  tasks = tasks_collector.ReadNextTasks(:maxCount => amount)
+
+  return tasks
+end
 
 
 
