@@ -142,6 +142,10 @@ until (overall_status == 'complete') && (overall_result == 'success') do
         logger.info "INFO - Found no long running maintenance modes."
         print '[ ' + 'INFO'.white + " ] Found no long running maintenance modes."
       end
+    else
+      clear_line
+      logger.info "INFO - Found no maintenance mode tasks"
+      print '[ ' + 'INFO'.white + " ] Found no maintenance mode tasks"
     end
     vim.close
   end
