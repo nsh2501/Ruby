@@ -7,6 +7,7 @@ require 'json'
 require 'syslog/logger'
 require 'net/ssh'
 require 'vmware_secret_server'
+require 'rest-client'
 
 #functions
 require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
@@ -28,7 +29,7 @@ opts = Trollop::options do
   opt :target_vcd_build, "vCloud-Director Build", :type => :string, :required => false, :default => "5225348"
   opt :zor_log_level, "Log level for the zor command", :type => :string, :required => false, :default => 'debug'
   opt :engine_api, "Zombie engine api location, i.e d0p1tlm-zmb-eng-fe-a:8080", :type => :string, :default => 'http://d0p1tlm-zmb-eng-fe-a:8080'
-  opt :zedVersion, "Action Set Version", :type => :string, :required => true
+  opt :zedVersion, "Action Set Version", :type => :string, :required => false, :default => 'latest'
   opt :certificate_warning_days, "How many days to check for expired SSL Certs", :type => :string
   opt :group_count, "How many hosts to perform at once", :type => :string, :required => false
   opt :precheck_only, "If true will only perform precheck. Actionset dependent", :type => :string, :required => false, :default => 'true'
@@ -126,6 +127,35 @@ ss_url = "https://#{pod_id}oss-mgmt-secret-web0.#{domain}/SecretServer/webservic
 ad_credentials = {}
 opts[:ad_username] = `whoami`.chomp
 opts[:ad_password] = get_adPass
+
+#get the latest action id if not provided
+if opts[:zedVersion].downcase == "latest"
+  begin
+    action_sets = RestClient::Request.execute(method: :get, url: "http://10.2.3.35:8080/engine_zapi/v1/zed/action?zed_action_name=#{opts[:action]}",
+      headers: {accept: 'application/json'})  
+  rescue => e
+    clear_line
+    $logger.info "ERROR - Could not get list of actions sets with action name: #{opts[:action]}"
+    puts '[ ' + 'ERROR'.red + " ] Could not get list of actions sets with action name: #{opts[:action]}. Failed with below error"
+    puts e.message
+    exit
+  end
+
+  action_setsJSON = JSON.parse(action_sets);
+  if action_setsJSON.empty?
+    clear_line
+    $logger.info "INFO - Could not find action set with name #{opts[:action]}. Prompting for zed verision"
+    puts '[ ' + 'WARN'.yellow + " ] Could not determing Zed Version. Please enter Version below and inform nholloway so he can look into this"
+    opts[:zedVersion] = ask("ZedVersion") 
+  else
+    versions = action_setsJSON['response']['entities'].map { |set| set['entity']['version'] }
+    versions.reject! { |x| !x.match(/^\d+.\d+.\d+$/) }
+    opts[:zedVersion] = versions.max
+    clear_line
+    $logger.info "INFO - Determined Zed Version to be #{opts[:zedVersion]}"
+    print '[ ' + 'INFO'.white + " ] Determined Zed Version to be #{opts[:zedVersion]}"
+  end
+end
 
 #perform the following on each vRealm specified
 opts[:vrealms].each { |vrealm|
