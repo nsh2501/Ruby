@@ -46,9 +46,10 @@ def verify_ssh_pass(vm, user, pass)
       clear_line
       print '[ ' + 'INFO'.white + " ] Successfully authenticated to #{vm}"
       $logger.info "INFO - Successfully authenticated to #{vm}" if $logger
-    rescue Net::SSH::AuthnticationFailed
+    rescue => e
       clear_line
       print '[ ' + 'INFO'.white + " ] Failed to authenticate to #{vm}. Please enter a password"
+      puts e
       pass = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
     end
   end
