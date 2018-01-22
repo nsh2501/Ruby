@@ -31,6 +31,27 @@ def get_password(adpass, secret, domain)
   end
 end
 
+def verify_ssh_pass(vm, user, pass)
+  access = 'false'
+  count = 0
+  clear_line
+  print '[ ' + 'INFO'.white + " ] Attempting to connect to #{vm} via SSH."
+  $logger.info "INFO - Attempting to conenct to #{vm} via SSH." if $logger
+
+  while access == 'false'
+    begin
+      session = Net::SSH.start(vm, user, :password => pass, :auth_methods => ['password'], :number_of_password_prompts => 0)
+      access = 'true'
+      session.close
+      clear_line
+      print '[ ' + 'INFO'.white + " ] Successfully authenticated to #{vm}"
+      $logger.info "INFO - Successfully authenticated to #{vm}" if $logger
+    rescue Net::SSH::AuthnticationFailed
+      clear_line
+      print '[ ' + 'INFO'.white + " ] Failed to authenticate to #{vm}. Please enter a password"
+      pass = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
+    end
+end
 
 def get_adPass
   if File.file?("#{ENV['HOME']}/.secretserver/ss_creds")
