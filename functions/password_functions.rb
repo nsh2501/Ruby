@@ -51,6 +51,7 @@ def verify_ssh_pass(vm, user, pass)
       print '[ ' + 'INFO'.white + " ] Failed to authenticate to #{vm}. Please enter a password"
       pass = ask("Please enter a new password for #{vm} and user #{user}") { |q| q.echo="*"}
     end
+  end
 end
 
 def get_adPass
