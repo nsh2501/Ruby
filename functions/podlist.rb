@@ -15,7 +15,6 @@ def f_pod_list (domain)
       'd7p7',
       'd8p8',
       'd0p9',
-      'd9p10',
       'd3p12',
       'd2p13',
       'd4p14',
