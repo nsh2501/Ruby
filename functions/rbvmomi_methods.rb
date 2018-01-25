@@ -281,10 +281,10 @@ def get_vm_2(vim, vm_prop=nil)
   result = pc.RetrieveProperties(:specSet => [filterSpec])
 end
 
-##### NOT DONE YET ######
 def get_powered_on_vms(vim, vm_prop=nil)
   vm_list = get_vm_2(vim, vm_prop)
-
+  vm_list.select! { |vm| vm.propSet.find { |prop| prop.name == 'runtime.powerState' }.val == 'poweredOn' }
+  return vm_list
 end
 
 def get_resource_pool(vim, rsp_prop=nil)
