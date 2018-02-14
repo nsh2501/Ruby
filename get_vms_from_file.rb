@@ -42,7 +42,7 @@ end
 
 #if remove_build_vms is true check service now
 if opts[:remove_build_vms] == true
-  svcnow_json = RestClient::Request.execute(method: :get, url: "https://vchs.service-now.com/api/now/table/pm_project?sysparm_query=sys_class_name%3Dpm_project%5Eu_type%3DCloud%20Build%5Eactive%3Dtrue%5Eu_vpc_idISNOTEMPTY&sysparm_fields=u_vpc_id",
+  svcnow_json = RestClient::Request.execute(method: :get, url: "https://ovhus.service-now.com/api/now/table/pm_project?sysparm_query=sys_class_name%3Dpm_project%5Eu_type%3DCloud%20Build%5Eactive%3Dtrue%5Eu_vpc_idISNOTEMPTY&sysparm_fields=u_vpc_id",
     headers: {accept: 'application/json'},
     user: 'vchs.p1.linjump',
     password: '3hW@HC&sKelSaq'
