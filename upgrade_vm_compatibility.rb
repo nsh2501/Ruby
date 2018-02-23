@@ -55,7 +55,7 @@ opts[:vrealms].each do |vrealm|
   $logger.debug "DEBUG - Number of VMs gathered. #{all_vms.count}"
 
   #get of list of cutomer created Resource Pools
-  cust_rps = all_rps.select { |pool| pool.propSet.find { |prop| prop.name == 'name' && prop.val !~ /System vDC|vmware_service|Resources|fleetRP/ } }
+  cust_rps = all_rps.select { |pool| pool.propSet.find { |prop| prop.name == 'name' && prop.val !~ /System vDC|vmware_service|Resources|fleetRP|hybridity_fleet/ } }
 
   #get all VMs in Resource Pools created by customer
   cust_vms = []
