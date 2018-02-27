@@ -31,8 +31,8 @@ def zen_alert_add(auth, severity, device, summary, component, evclasskey, evclas
       payload: payload.to_json)
 
     clear_line
-    print '[ ' + 'INFO'.white + " ] Alert succesfully added to Zenoss for #{device}/#{component}"
-    $logger.info "INFO - Alert succesfully added to Zenoss for #{device}/#{component}"
+    print '[ ' + 'INFO'.white + " ] Alert successfully added to Zenoss for #{device}/#{component}"
+    $logger.info "INFO - Alert successfully added to Zenoss for #{device}/#{component}"
 
   rescue => e
     clear_line

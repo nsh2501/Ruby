@@ -153,7 +153,7 @@ cpu_allocation_unlimited = rsp_matches.select { |rsp| rsp["cpu_alloc"] == -1 }
 #send to zenoss for each resource pool that is not set to unlimited
 cpu_allocation_not_unlimited.each do |rsp|
   vcenter = rsp['vcenter'] + '.' + full_domain
-  summary = 'CPU Allocation not set to unlimited: KB-XXXXX'
+  summary = 'CPU Allocation not set to unlimited: KB-11840'
   component = rsp['name']
   evclasskey = 'KeyText'
   evclass = '/vSphere'
@@ -189,7 +189,7 @@ cpu_allocation_unlimited.each do |rsp|
   #if query return results update Zenoss and DB
   unless query.empty?
     vcenter = rsp['vcenter'] + '.' + full_domain
-    summary = 'CPU Allocation not set to unlimited: KB-XXXXX'
+    summary = 'CPU Allocation not set to unlimited: KB-11840'
     component = rsp['name']
     evclasskey = 'KeyText'
     evclass = '/vSphere'
