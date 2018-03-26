@@ -28,8 +28,8 @@ opts = Trollop::options do
   opt :log_level, "Set level of logging", :type => :string, :required => false, :default => 'INFO'
   opt :presto_db, "VM Name for prestodb", :type => :string, :required => false, :default => 'd0p1tlm-prestodb-a'
   opt :verify_only, "If true will only verify and make no changes", :type => :boolean, :requied => false, :default => true
-  opt :target_vcenter_build, "Target VC Build for VSUPG", :type => :string, :required => false, :default => '5318203'
-  opt :target_esxi_build, "Target ESXI Build for VSUPG", :type => :string, :required => false, :default => '5572656'
+  opt :target_vcenter_build, "Target VC Build for VSUPG", :type => :string, :required => false, :default => '7462485'
+  opt :target_esxi_build, "Target ESXI Build for VSUPG", :type => :string, :required => false, :default => '6921384'
   opt :daas_target_esxi_build, "Target DaaS ESXI Build for VSUPG", :type => :string, :required => false, :default => '5580970'
 end
 
