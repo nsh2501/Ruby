@@ -1,11 +1,13 @@
 #!/usr/bin/env ruby
 # Script to take snapshot of a virtual machine
 
+functions_dir = File.dirname(File.realpath(__FILE__)) + '/functions'
+
 #requires
 require 'trollop'
-require_relative '/home/nholloway/scripts/Ruby/functions/password_functions.rb'
-require_relative '/home/nholloway/scripts/Ruby/functions/rbvmomi_methods.rb'
-require_relative '/home/nholloway/scripts/Ruby/functions/format.rb'
+require_relative "#{functions_dir}/password_functions.rb"
+require_relative "#{functions_dir}/functions/rbvmomi_methods.rb"
+require_relative "#{functions_dir}/functions/format.rb"
 
 #params
 opts = Trollop::options do
