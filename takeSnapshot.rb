@@ -16,6 +16,7 @@ opts = Trollop::options do
   opt :snapshot_memory, "Whether or not to snapshot the memory", :type => :string, :requied => false, :default => 'true'
   opt :quiesce_filesystem, "Where or not to quiesce the filesystem", :type => :string, :required => false, :default => 'false'
   opt :snapshot_name, "Name of the snapshot. Normally the change you are running", :type => :string, :required => true
+  opt :user, "User to pass to the vCenter module", :type => :string, :required => false
   opt :log_level, "Level of logs that you want", :type => :string, :required => false, :default => 'INFO'
 end
 
@@ -23,9 +24,13 @@ Trollop::die :snapshot_memory, "Must be either true or false" unless (opts[:snap
 Trollop::die :quiesce_filesystem, "Must be either true or false" unless (opts[:quiesce_filesystem] != 'true') || (opts[:quiesce_filesystem] != 'false')
 
 #variables
-ad_user =  'AD\\' + `whoami`.chomp
+if opt[:user]
+  ad_user = opts[:user]
+else
+  ad_user =  'AD\\' + `whoami`.chomp
+end
 ad_pass = get_adPass
-script_name = 'takeSnapshot.rb'
+script_name = 'takeSnapshot.rb' 
 domain = ENV['HOSTNAME'].split('.')[1]
 
 
