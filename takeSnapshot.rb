@@ -60,14 +60,13 @@ opts[:vm].each do |vm_name|
     clear_line
     logger.info "ERROR - Could not find #{vm_name} on vCenter #{opts[:vcenter]}."
     puts '[ ' + 'ERROR'.red + " ] Could not find #{vm_name} on vCenter #{opts[:vcenter]}."
-    exit
+  else
+    clear_line
+    logger.info "INFO - Taking snapshot of #{vm_name}"
+    print '[ ' + 'INFO'.white + " ] Taking snapshot of #{vm_name}"
+
+    snap = take_snapshot(vm, opts[:snapshot_name], opts[:snapshot_memory], opts[:quiesce_filesystem], logger)
   end
-
-  clear_line
-  logger.info "INFO - Taking snapshot of #{vm_name}"
-  print '[ ' + 'INFO'.white + " ] Taking snapshot of #{vm_name}"
-
-  snap = take_snapshot(vm, opts[:snapshot_name], opts[:snapshot_memory], opts[:quiesce_filesystem], logger)
 end
 
 clear_line
