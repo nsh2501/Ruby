@@ -6,8 +6,8 @@ functions_dir = File.dirname(File.realpath(__FILE__)) + '/functions'
 #requires
 require 'trollop'
 require_relative "#{functions_dir}/password_functions.rb"
-require_relative "#{functions_dir}/functions/rbvmomi_methods.rb"
-require_relative "#{functions_dir}/functions/format.rb"
+require_relative "#{functions_dir}/rbvmomi_methods.rb"
+require_relative "#{functions_dir}/format.rb"
 
 #params
 opts = Trollop::options do
