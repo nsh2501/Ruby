@@ -24,7 +24,7 @@ Trollop::die :snapshot_memory, "Must be either true or false" unless (opts[:snap
 Trollop::die :quiesce_filesystem, "Must be either true or false" unless (opts[:quiesce_filesystem] != 'true') || (opts[:quiesce_filesystem] != 'false')
 
 #variables
-if opt[:user]
+if opts[:user]
   ad_user = opts[:user]
 else
   ad_user =  'AD\\' + `whoami`.chomp
